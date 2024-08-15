@@ -5,6 +5,7 @@
 
 enum GameState {
     PRE_GAME,
+    GAME_BEGIN,
     RED,
     GREEN,
     GAME_OVER

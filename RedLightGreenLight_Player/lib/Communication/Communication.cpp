@@ -15,25 +15,58 @@ void Communication::begin() {
     LoRa.setSyncWord(0xF3);
 }
 
-MessageType Communication::receiveData() {
+MessageType Communication::receiveData(int playerId) {
+    
     int packetSize = LoRa.parsePacket();
     if (packetSize) {
         LoRa.readBytes((uint8_t*)&message, sizeof(message));
         messageReceived = true;
 
-        Serial.print("Message received - ID: ");
-        Serial.print(message.id);
-        Serial.print(", Sensitivity: ");
-        Serial.print(message.sensitivity);
-        Serial.print(", Game State: ");
-        Serial.print(static_cast<int>(message.game_state));
-        Serial.print(", Player Status: ");
-        Serial.println(static_cast<int>(message.player_status));
-
-        return MessageType::GAME;
+        if (message.id_sender == BRAIN_ID) {
+            printMessageDetails(message);
+            return MessageType::GAME;
+        } else {
+            return MessageType::UNKNOWN;
+        }
     }
     messageReceived = false;
     return MessageType::UNKNOWN;
+}
+
+void Communication::printMessageDetails(const Msg& message) {
+    Serial.print("Message received - ID Sender: ");
+    Serial.print(message.id_sender);
+    Serial.print(", ID Receiver: ");
+    Serial.print(message.id_receiver);
+    Serial.print(", Sensitivity: ");
+    Serial.print(message.sensitivity);
+    Serial.print(", Game State: ");
+    Serial.print(gameStateToString(message.game_state));
+    Serial.print(", Player Status: ");
+    Serial.println(playerStatusToString(message.player_status));
+
+}
+
+const char* Communication::gameStateToString(GameState state) {
+    switch (state) {
+        case PRE_GAME: return "Pre-Game";
+        case GAME_BEGIN: return "Game Begin";
+        case RED: return "Red Light";
+        case GREEN: return "Green Light";
+        case GAME_OVER: return "Game Over";
+        default: return "Unknown";
+    }
+}
+
+const char* Communication::playerStatusToString(PlayerStatus status) {
+    switch (status) {
+        case IDLE: return "Idle";
+        case PLAYING: return "Playing";
+        case NOT_PLAYING: return "Not Playing";
+        case MOVED: return "Moved During Red Light";
+        case CROSSED_FINISH_LINE: return "Crossed Finish Line";
+        default: return "Unknown";
+    }
 }
 
 Communication::Msg Communication::getMsg() {
@@ -42,7 +75,8 @@ Communication::Msg Communication::getMsg() {
 
 void Communication::sendMessage(int id, int sensitivity, GameState game_state, PlayerStatus player_status) {
     Communication::Msg messageToSend;
-    messageToSend.id = id;
+    messageToSend.id_sender = id;
+    messageToSend.id_receiver = BRAIN_ID;
     messageToSend.sensitivity = sensitivity;
     messageToSend.game_state = game_state;
     messageToSend.player_status = player_status;
@@ -54,10 +88,10 @@ void Communication::sendMessage(int id, int sensitivity, GameState game_state, P
 
 bool Communication::establishedCommunication(int playerId) {
     static unsigned long lastMillis = millis();
-    
+
     switch (currentState) {
         case CommunicationState::WaitingForEstablishMessage:
-            if (receiveData() == MessageType::ESTABLISH) {
+            if (receiveData(playerId) == MessageType::ESTABLISH) {
                 Serial.println("Moving to SendingEstablishMessage state,");
                 currentState = CommunicationState::SendingEstablishMessage;
                 lastMillis = millis();
@@ -69,7 +103,7 @@ bool Communication::establishedCommunication(int playerId) {
                 Serial.println("Establish message sent by me, the Brain. Waiting for player to send");
                 lastMillis = millis();
             }
-            if (receiveData() == MessageType::ESTABLISH) {
+            if (receiveData(playerId) == MessageType::ESTABLISH) {
                 currentState = CommunicationState::Completed;
             }
             break;

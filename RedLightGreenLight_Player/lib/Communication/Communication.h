@@ -16,6 +16,8 @@
 
 #define BAND    433E6
 
+#define BRAIN_ID 100
+
 enum class MessageType {
     ESTABLISH,
     GAME,
@@ -25,18 +27,22 @@ enum class MessageType {
 class Communication {
 public:
     struct Msg {
-        int id;
+        int id_sender;
+        int id_receiver;
         int sensitivity;
         GameState game_state;
         PlayerStatus player_status;
     };
 
     Communication();
-    MessageType receiveData();
+    MessageType receiveData(int playerId);
     Msg getMsg();
     void sendMessage(int id, int sensitivity, GameState game_state, PlayerStatus player_status);
     void begin();
     bool establishedCommunication(int playerId);
+    void printMessageDetails(const Msg& message);
+    const char* gameStateToString(GameState state);
+    const char* playerStatusToString(PlayerStatus status);
 private:
     Msg message;
     bool messageReceived;

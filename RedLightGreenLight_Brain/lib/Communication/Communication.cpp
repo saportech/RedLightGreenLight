@@ -22,11 +22,58 @@ MessageType Communication::receiveData() {
         messageReceived = true;
 
         printMessageDetails(message);
+        return MessageType::GAME;
 
-        return MessageType::GAME;  // Adjust if necessary based on message content
     }
     messageReceived = false;
     return MessageType::UNKNOWN;
+}
+
+void Communication::printMessageDetails(const Msg& message) {
+    Serial.print("Message received - ID: ");
+    Serial.print(message.id_sender);
+    Serial.print(", ID Receiver: ");
+    Serial.print(message.id_receiver);
+    Serial.print(", Sensitivity: ");
+    Serial.print(message.sensitivity);
+    Serial.print(", Game State: ");
+    Serial.print(gameStateToString(message.game_state));
+    Serial.print(", Player Status: ");
+    Serial.print(playerStatusToString(message.player_status));
+
+    int rssi = LoRa.packetRssi();
+    float snr = LoRa.packetSnr();
+
+    Serial.print(", RSSI: ");
+    Serial.print(rssi);
+    Serial.print(", SNR: ");
+    Serial.println(snr);
+
+    if (rssi > -80) {
+        Serial.println("Player is close");
+    }
+}
+
+const char* Communication::gameStateToString(GameState state) {
+    switch (state) {
+        case PRE_GAME: return "Pre-Game";
+        case GAME_BEGIN: return "Game Begin";
+        case RED: return "Red Light";
+        case GREEN: return "Green Light";
+        case GAME_OVER: return "Game Over";
+        default: return "Unknown";
+    }
+}
+
+const char* Communication::playerStatusToString(PlayerStatus status) {
+    switch (status) {
+        case IDLE: return "Idle";
+        case PLAYING: return "Playing";
+        case NOT_PLAYING: return "Not Playing";
+        case MOVED: return "Moved During Red Light";
+        case CROSSED_FINISH_LINE: return "Crossed Finish Line";
+        default: return "Unknown";
+    }
 }
 
 Communication::Msg Communication::getMsg() {
@@ -35,7 +82,8 @@ Communication::Msg Communication::getMsg() {
 
 void Communication::sendMessage(int id, int sensitivity, GameState game_state, PlayerStatus player_status) {
     Communication::Msg messageToSend;
-    messageToSend.id = id;
+    messageToSend.id_sender = BRAIN_ID;
+    messageToSend.id_receiver = id;
     messageToSend.sensitivity = sensitivity;
     messageToSend.game_state = game_state;
     messageToSend.player_status = player_status;
@@ -70,25 +118,4 @@ bool Communication::establishedCommunication(int playerId) {
             return true;
     }
     return false;
-}
-
-void Communication::printMessageDetails(const Msg& message) {
-    Serial.print("Message received - ID: ");
-    Serial.print(message.id);
-    Serial.print(", Sensitivity: ");
-    Serial.print(message.sensitivity);
-    Serial.print(", Game State: ");
-    Serial.print(static_cast<int>(message.game_state));
-    Serial.print(", Player Status: ");
-    Serial.print(static_cast<int>(message.player_status));
-
-    int rssi = LoRa.packetRssi();
-    float snr = LoRa.packetSnr();
-
-    Serial.print(" RSSI: ");
-    Serial.println(rssi);
-
-    if (rssi > -80) {
-        Serial.println("Player is close");
-    }
 }

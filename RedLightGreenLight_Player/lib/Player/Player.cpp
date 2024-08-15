@@ -4,9 +4,9 @@
 #define BLE_SERVER_NAME "ESP32_Player"
 
 const char* predefinedMacs[] = {
-    "30:C9:22:B8:AD:7C",  // Replace with actual MAC addresses
-    "30:C9:22:B8:AD:7D",
-    "XX:XX:XX:XX:XX:03",
+    "30:C9:22:B8:AD:7C",
+    "30:C9:22:B8:AD:XX",
+    "30:C9:22:B8:AD:8C",
     "XX:XX:XX:XX:XX:04",
     "XX:XX:XX:XX:XX:05"
 };
@@ -56,7 +56,6 @@ void Player::assignIdFromMac() {
     sprintf(macStr, "%02X:%02X:%02X:%02X:%02X:%02X",
             mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
 
-    // Print out the MAC address
     Serial.print("Retrieved MAC address: ");
     Serial.println(macStr);
 
