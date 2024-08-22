@@ -35,7 +35,7 @@ void MPU6050_ESP32::readSensorData(int16_t* ax, int16_t* ay, int16_t* az, int16_
 
 bool MPU6050_ESP32::isMovementDetected(int userThreshold) {
   // Map the user-provided threshold value to the desired range (7000-100000)
-  int threshold = map(userThreshold, 10, 1, 7000, 100000);
+  int threshold = map(userThreshold, 9, 1, 7000, 100000);
   
   // Track time using millis()
   static unsigned long lastSampleTime = 0;

@@ -1,24 +1,22 @@
 #include "Player.h"
-#include <WiFi.h>
-
-#define BLE_SERVER_NAME "ESP32_Player"
 
 const char* predefinedMacs[] = {
-    "30:C9:22:B8:AD:7C",
-    "30:C9:22:B8:AD:XX",
-    "30:C9:22:B8:AD:8C",
-    "XX:XX:XX:XX:XX:04",
-    "XX:XX:XX:XX:XX:05"
-};
+        "AC:15:18:4B:45:E4",
+        "AC:15:18:4B:46:00",
+        "30:C9:22:B8:AD:8C",
+        "XX:XX:XX:XX:XX:04",
+        "XX:XX:XX:XX:XX:05",
+        "XX:XX:XX:XX:XX:09"
+    };
 
 const int predefinedIds[] = {
-    11, 12, 13, 14, 15  // Corresponding IDs for the MAC addresses
+    1, 2, 3, 4, 5, 9
 };
 
 const int numPlayers = sizeof(predefinedMacs) / sizeof(predefinedMacs[0]);
 
 Player::Player() : _status(NOT_PLAYING) {
-    
+
 }
 
 void Player::begin() {
@@ -40,8 +38,8 @@ int Player::getId() {
 
 bool Player::movedDuringRedLight(int threshold) {
     // Ensure threshold is within an acceptable range
-    if (threshold < 1 || threshold > 10) {
-        threshold = 5;
+    if (threshold < 1 || threshold > 9) {
+        threshold = 8;
     }
 
     // Check for movement using MPU6050 sensor
@@ -72,7 +70,7 @@ void Player::assignIdFromMac() {
     }
 
     // Default ID if MAC address is not found in the list
-    _id = 20;
+    _id = 9;
     Serial.print("Assigned default ID ");
     Serial.print(_id);
     Serial.print(" for MAC address ");

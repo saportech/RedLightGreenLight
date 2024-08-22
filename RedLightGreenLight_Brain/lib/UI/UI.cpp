@@ -17,8 +17,8 @@ void UI::setupPinsAndSensors() {
 BUTTON_PRESSED UI::buttonPressed() {
     for (int i = 0; i < 10; i++) {
         selectMuxChannel(i);
-        delay(1);
         int buttonState = digitalRead(IO_IN);
+        delay(1);
         if (buttonState == LOW) {
             return static_cast<BUTTON_PRESSED>(i);
         }
@@ -62,7 +62,6 @@ void UI::updateLEDs(GameState gameState, Player players[], int numPlayers) {
         leds[i].nscale8(BRIGHTNESS_SCALE);  // Apply brightness scale
     }
 
-    // Update the game state LED based on the current state of the game
     switch (gameState) {
         case GREEN:
             leds[GAME_STATE_LED] = CRGB::Green;

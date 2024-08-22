@@ -3,7 +3,7 @@
 
 #include <Arduino.h>
 #include "MPU6050_ESP32.h"
-#include <WiFi.h>  // Include WiFi library to get MAC address
+#include <WiFi.h>
 
 enum PlayerStatus {
     IDLE,
@@ -12,6 +12,8 @@ enum PlayerStatus {
     MOVED,
     CROSSED_FINISH_LINE
 };
+
+
 
 class Player {
 public:

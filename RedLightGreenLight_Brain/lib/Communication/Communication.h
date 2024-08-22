@@ -21,7 +21,7 @@
 const float RSSI_d0 = -40.0;  // Example RSSI at 1 meter (d0)
 const float n = 2.0;          // Path loss exponent (free space)
 
-enum class MessageType {
+enum class MessageType : int {
     ESTABLISH,
     GAME,
     UNKNOWN
@@ -31,31 +31,29 @@ class Communication {
 public:
     struct Msg {
         int id_sender;
-        int id_receiver;
-        int sensitivity;
-        GameState game_state;
         PlayerStatus player_status;
     };
 
     Communication();
-    MessageType receiveData();
+    void begin();
+    void receiveData();
     Msg getMsg();
     void sendMessage(int id, int sensitivity, GameState game_state, PlayerStatus player_status);
-    void begin();
     bool establishedCommunication(int playerId);
+    void resetMsg();
 
 private:
     Msg message;
     bool messageReceived;
-    enum class CommunicationState {
+    enum class CommunicationState : byte {
         WaitingForEstablishMessage,
         SendingEstablishMessage,
         Completed
     };
     CommunicationState currentState;
 
+    void parseMessage(const String& incoming);
     void printMessageDetails(const Msg& message);
-    const char* gameStateToString(GameState state);
     const char* playerStatusToString(PlayerStatus status);
 };
 

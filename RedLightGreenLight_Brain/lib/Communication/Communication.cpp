@@ -4,7 +4,6 @@ Communication::Communication() : messageReceived(false), currentState(Communicat
 }
 
 void Communication::begin() {
-
     LoRa.setPins(SS, RST, DI0);
 
     if (!LoRa.begin(BAND)) {
@@ -12,57 +11,73 @@ void Communication::begin() {
         while (1);
     }
 
-    LoRa.setSyncWord(0xF3);
+    LoRa.setSpreadingFactor(10);
 }
 
-MessageType Communication::receiveData() {
+void Communication::receiveData() {
     int packetSize = LoRa.parsePacket();
+    String incoming = "";
+
     if (packetSize) {
-        LoRa.readBytes((uint8_t*)&message, sizeof(message));
-        messageReceived = true;
 
-        printMessageDetails(message);
-        return MessageType::GAME;
+        while (LoRa.available()) {
+            incoming += (char)LoRa.read();
+        }
 
+        if (incoming.endsWith(" E")) {
+            incoming.remove(incoming.length() - 2);
+        }
+
+        parseMessage(incoming);
     }
-    messageReceived = false;
-    return MessageType::UNKNOWN;
+}
+
+void Communication::parseMessage(const String& incoming) {
+    int id = 0;
+    PlayerStatus player_status = PlayerStatus::NOT_PLAYING;
+
+    // Process the message string to extract values
+    int index = 0;
+    String token = "";
+    int part = 0;
+    String LoRaMessage = incoming;
+
+    while ((index = LoRaMessage.indexOf(' ')) != -1) {
+        token = LoRaMessage.substring(0, index);
+        LoRaMessage = LoRaMessage.substring(index + 1);
+
+        switch (part) {
+            case 0:
+                id = token.toInt();
+                break;
+            case 1:
+                player_status = static_cast<PlayerStatus>(token.toInt());
+                break;
+            default:
+                break;
+        }
+        part++;
+    }
+
+    if (LoRaMessage.length() > 0) {
+        if (part == 0) {
+            id = LoRaMessage.toInt();
+        } else if (part == 1) {
+            player_status = static_cast<PlayerStatus>(LoRaMessage.toInt());
+        }
+    }
+
+    message.id_sender = id;
+    message.player_status = player_status;
+
+    //printMessageDetails(message);
 }
 
 void Communication::printMessageDetails(const Msg& message) {
-    Serial.print("Message received - ID: ");
+    Serial.print("Msg - ID Send: ");
     Serial.print(message.id_sender);
-    Serial.print(", ID Receiver: ");
-    Serial.print(message.id_receiver);
-    Serial.print(", Sensitivity: ");
-    Serial.print(message.sensitivity);
-    Serial.print(", Game State: ");
-    Serial.print(gameStateToString(message.game_state));
     Serial.print(", Player Status: ");
-    Serial.print(playerStatusToString(message.player_status));
-
-    int rssi = LoRa.packetRssi();
-    float snr = LoRa.packetSnr();
-
-    Serial.print(", RSSI: ");
-    Serial.print(rssi);
-    Serial.print(", SNR: ");
-    Serial.println(snr);
-
-    if (rssi > -80) {
-        Serial.println("Player is close");
-    }
-}
-
-const char* Communication::gameStateToString(GameState state) {
-    switch (state) {
-        case PRE_GAME: return "Pre-Game";
-        case GAME_BEGIN: return "Game Begin";
-        case RED: return "Red Light";
-        case GREEN: return "Green Light";
-        case GAME_OVER: return "Game Over";
-        default: return "Unknown";
-    }
+    Serial.println(playerStatusToString(message.player_status));
 }
 
 const char* Communication::playerStatusToString(PlayerStatus status) {
@@ -81,16 +96,23 @@ Communication::Msg Communication::getMsg() {
 }
 
 void Communication::sendMessage(int id, int sensitivity, GameState game_state, PlayerStatus player_status) {
-    Communication::Msg messageToSend;
-    messageToSend.id_sender = BRAIN_ID;
-    messageToSend.id_receiver = id;
-    messageToSend.sensitivity = sensitivity;
-    messageToSend.game_state = game_state;
-    messageToSend.player_status = player_status;
 
     LoRa.beginPacket();
-    LoRa.write((uint8_t*)&messageToSend, sizeof(messageToSend));
+    LoRa.print(String(id));
+    LoRa.print(" ");
+    LoRa.print(String(sensitivity));
+    LoRa.print(" ");
+    LoRa.print(String(game_state));
+    LoRa.print(" ");
+    LoRa.print(String(player_status));
+    LoRa.print(" ");
+    LoRa.print("E");
     LoRa.endPacket();
+}
+
+void Communication::resetMsg() {
+    message.id_sender = 0;
+    message.player_status = PlayerStatus::IDLE;
 }
 
 bool Communication::establishedCommunication(int playerId) {
@@ -98,21 +120,21 @@ bool Communication::establishedCommunication(int playerId) {
 
     switch (currentState) {
         case CommunicationState::WaitingForEstablishMessage:
-            if (receiveData() == MessageType::ESTABLISH) {
-                Serial.println("Moving to SendingEstablishMessage state,");
-                currentState = CommunicationState::SendingEstablishMessage;
-                lastMillis = millis();
-            }
+            // if (receiveData() == MessageType::ESTABLISH) {
+            //     Serial.println("Moving to SendingEstablishMessage state.");
+            //     currentState = CommunicationState::SendingEstablishMessage;
+            //     lastMillis = millis();
+            // }
             break;
         case CommunicationState::SendingEstablishMessage:
             if (millis() - lastMillis > 2000) {
                 sendMessage(playerId, 1, GameState::PRE_GAME, PlayerStatus::IDLE);
-                Serial.println("Establish message sent by me, the Brain. Waiting for player to send");
+                Serial.println("Establish message sent by me, the Brain. Waiting for player to send.");
                 lastMillis = millis();
             }
-            if (receiveData() == MessageType::ESTABLISH) {
-                currentState = CommunicationState::Completed;
-            }
+            // if (receiveData() == MessageType::ESTABLISH) {
+            //     currentState = CommunicationState::Completed;
+            // }
             break;
         case CommunicationState::Completed:
             return true;
