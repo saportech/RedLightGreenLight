@@ -1,7 +1,4 @@
 #include "Player.h"
-#include <Arduino.h>
-
-Player* pPlayerInstance;  // Global pointer to Player instance
 
 Player::Player() : _id(-1), _status(IDLE) {
     // Initialize default values

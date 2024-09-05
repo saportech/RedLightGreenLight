@@ -5,6 +5,7 @@
 
 enum PlayerStatus {
     IDLE,
+    ESTABLISHED_COMMUNICATION,
     PLAYING,
     NOT_PLAYING,
     MOVED,

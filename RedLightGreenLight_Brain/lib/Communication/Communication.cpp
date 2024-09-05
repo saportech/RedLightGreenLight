@@ -1,143 +1,177 @@
 #include "Communication.h"
 
-Communication::Communication() : messageReceived(false), currentState(CommunicationState::WaitingForEstablishMessage) {
+// Define mesh network parameters
+#define MESH_PREFIX "RedLightGreenLight"
+#define MESH_PASSWORD "myMeshPass"
+#define MESH_PORT 7777
+
+// Instantiate the mesh network
+painlessMesh mesh;
+
+bool Communication::messageReceived = false;
+String Communication::incomingMessage = "";
+
+Communication::Communication() {
+    // No additional setup needed
 }
 
 void Communication::begin() {
-    LoRa.setPins(SS, RST, DI0);
+    resetMsg();
 
-    if (!LoRa.begin(BAND)) {
-        Serial.println("LoRa initialization failed. Check your connections.");
-        while (1);
+    // Set debug message types
+    mesh.setDebugMsgTypes(ERROR | STARTUP);
+
+    // Initialize mesh
+    mesh.init(MESH_PREFIX, MESH_PASSWORD, MESH_PORT);
+    
+    // Register callbacks
+    mesh.onReceive([](uint32_t from, String &msg) {
+        Communication::receivedCallback(from, msg);
+    });
+
+    mesh.onNewConnection([](uint32_t nodeId) {
+        Communication::newConnectionCallback(nodeId);
+    });
+    mesh.onChangedConnections([]() {
+        Communication::changedConnectionCallback();
+    });
+    mesh.onNodeTimeAdjusted([](int32_t offset) {
+        Communication::nodeTimeAdjustedCallback(offset);
+    });  
+
+    establishedCommunicationIsValid = false;
+}
+
+void Communication::sendMessage(int id_sender, int id_receiver, int sensitivity, GameState game_state, PlayerStatus player_status) {
+    String msg = String(id_sender) + " " + String(id_receiver) + " " + String(sensitivity) + " " + game_state + " " + player_status;
+    if (mesh.getNodeList().size() > 0) {
+        mesh.sendBroadcast(msg);
     }
-
-    LoRa.setSpreadingFactor(10);
+    
+    //Serial.println("Sent message: " + msg);
 }
 
 void Communication::receiveData() {
-    int packetSize = LoRa.parsePacket();
-    String incoming = "";
-
-    if (packetSize) {
-
-        while (LoRa.available()) {
-            incoming += (char)LoRa.read();
-        }
-
-        if (incoming.endsWith(" E")) {
-            incoming.remove(incoming.length() - 2);
-        }
-
-        parseMessage(incoming);
+    mesh.update();
+    if (messageReceived) {
+        parseMessage(incomingMessage);
+        messageReceived = false;
     }
 }
 
 void Communication::parseMessage(const String& incoming) {
-    int id = 0;
-    PlayerStatus player_status = PlayerStatus::NOT_PLAYING;
+    int id_sender = 0, id_receiver = 0, sensitivity = 0;
+    GameState game_state = GameState::PRE_GAME;
+    PlayerStatus player_status = PlayerStatus::IDLE;
 
-    // Process the message string to extract values
-    int index = 0;
-    String token = "";
-    int part = 0;
-    String LoRaMessage = incoming;
+    int firstSpace = incoming.indexOf(' ');
+    int secondSpace = incoming.indexOf(' ', firstSpace + 1);
+    int thirdSpace = incoming.indexOf(' ', secondSpace + 1);
+    int fourthSpace = incoming.indexOf(' ', thirdSpace + 1);
 
-    while ((index = LoRaMessage.indexOf(' ')) != -1) {
-        token = LoRaMessage.substring(0, index);
-        LoRaMessage = LoRaMessage.substring(index + 1);
+    id_sender = incoming.substring(0, firstSpace).toInt();
+    id_receiver = incoming.substring(firstSpace + 1, secondSpace).toInt();
+    sensitivity = incoming.substring(secondSpace + 1, thirdSpace).toInt();
+    int gameStateInt = incoming.substring(thirdSpace + 1, fourthSpace).toInt();
+    int playerStatusInt = incoming.substring(fourthSpace + 1).toInt();
 
-        switch (part) {
-            case 0:
-                id = token.toInt();
-                break;
-            case 1:
-                player_status = static_cast<PlayerStatus>(token.toInt());
-                break;
-            default:
-                break;
-        }
-        part++;
-    }
+    game_state = static_cast<GameState>(gameStateInt);
+    player_status = static_cast<PlayerStatus>(playerStatusInt);
 
-    if (LoRaMessage.length() > 0) {
-        if (part == 0) {
-            id = LoRaMessage.toInt();
-        } else if (part == 1) {
-            player_status = static_cast<PlayerStatus>(LoRaMessage.toInt());
-        }
-    }
-
-    message.id_sender = id;
+    message.id_sender = id_sender;
+    message.id_receiver = id_receiver;
+    message.sensitivity = sensitivity;
+    message.game_state = game_state;
     message.player_status = player_status;
 
-    //printMessageDetails(message);
+    printMessageDetails(message);
 }
 
 void Communication::printMessageDetails(const Msg& message) {
-    Serial.print("Msg - ID Send: ");
-    Serial.print(message.id_sender);
-    Serial.print(", Player Status: ");
-    Serial.println(playerStatusToString(message.player_status));
-}
-
-const char* Communication::playerStatusToString(PlayerStatus status) {
-    switch (status) {
-        case IDLE: return "Idle";
-        case PLAYING: return "Playing";
-        case NOT_PLAYING: return "Not Playing";
-        case MOVED: return "Moved During Red Light";
-        case CROSSED_FINISH_LINE: return "Crossed Finish Line";
-        default: return "Unknown";
-    }
+    Serial.print(" Send: " + String(message.id_sender));
+    Serial.print(" Recv: " + String(message.id_receiver));
+    Serial.print(" Sens: " + String(message.sensitivity));
+    Serial.print(" Game: " + String(message.game_state));
+    Serial.println(" Player: " + String(message.player_status));
 }
 
 Communication::Msg Communication::getMsg() {
     return message;
 }
 
-void Communication::sendMessage(int id, int sensitivity, GameState game_state, PlayerStatus player_status) {
-
-    LoRa.beginPacket();
-    LoRa.print(String(id));
-    LoRa.print(" ");
-    LoRa.print(String(sensitivity));
-    LoRa.print(" ");
-    LoRa.print(String(game_state));
-    LoRa.print(" ");
-    LoRa.print(String(player_status));
-    LoRa.print(" ");
-    LoRa.print("E");
-    LoRa.endPacket();
-}
-
 void Communication::resetMsg() {
     message.id_sender = 0;
+    message.id_receiver = 0;
+    message.sensitivity = 0;
+    message.game_state = GameState::PRE_GAME;
     message.player_status = PlayerStatus::IDLE;
 }
 
-bool Communication::establishedCommunication(int playerId) {
-    static unsigned long lastMillis = millis();
+void Communication::receivedCallback(uint32_t from, String &msg) {
+    //Serial.printf("Received from %u msg=%s\n", from, msg.c_str());
+    messageReceived = true;
+    incomingMessage = msg;
+}
 
-    switch (currentState) {
-        case CommunicationState::WaitingForEstablishMessage:
-            // if (receiveData() == MessageType::ESTABLISH) {
-            //     Serial.println("Moving to SendingEstablishMessage state.");
-            //     currentState = CommunicationState::SendingEstablishMessage;
-            //     lastMillis = millis();
-            // }
-            break;
-        case CommunicationState::SendingEstablishMessage:
-            if (millis() - lastMillis > 2000) {
-                sendMessage(playerId, 1, GameState::PRE_GAME, PlayerStatus::IDLE);
-                Serial.println("Establish message sent by me, the Brain. Waiting for player to send.");
-                lastMillis = millis();
+void Communication::newConnectionCallback(uint32_t nodeId) {
+    Serial.printf("New Connection, nodeId = %u\n", nodeId);
+}
+
+void Communication::changedConnectionCallback() {
+    Serial.printf("Changed connections\n");
+}
+
+void Communication::nodeTimeAdjustedCallback(int32_t offset) {
+    Serial.printf("Adjusted time %u. Offset = %d\n", mesh.getNodeTime(), offset);
+}
+
+int Communication::establishedCommunication(Msg message, const std::vector<int>& playerIDs) {
+    enum ESTABLISH_STATE_TYPE { 
+        ESTABLISHING_COMMUNICATION,
+        COMPLETED
+    };
+    
+    static int establishCurrentState = ESTABLISHING_COMMUNICATION;
+    static bool allAcknowledged = false;
+    
+    switch (establishCurrentState) {
+        case ESTABLISHING_COMMUNICATION:
+            for (size_t i = 0; i < playerIDs.size(); ++i) {
+                if (message.id_sender == playerIDs[i] && message.game_state == GameState::PRE_GAME && message.player_status == PlayerStatus::IDLE) {
+                    sendMessage(9, playerIDs[i], 7, GameState::PRE_GAME, PlayerStatus::IDLE);
+                    Serial.println("Player " + String(playerIDs[i]) + " acknowledged");
+                    playerAcknowledged[i] = true;
+                    return i + 1;
+                }
             }
-            // if (receiveData() == MessageType::ESTABLISH) {
-            //     currentState = CommunicationState::Completed;
-            // }
+            allAcknowledged = true;
+            for (size_t i = 0; i < playerIDs.size(); ++i) {
+                if (!playerAcknowledged[i]) {
+                    allAcknowledged = false;
+                    break;
+                }
+            }
+            if (allAcknowledged) {
+                establishCurrentState = COMPLETED;
+                for (size_t i = 0; i < playerIDs.size(); ++i) {
+                    playerAcknowledged[i] = false;
+                }
+                establishedCommunicationIsValid = true;
+            }
             break;
-        case CommunicationState::Completed:
-            return true;
+        case COMPLETED:
+            if (establishedCommunicationIsValid) {
+                return 9;
+            }
+            else {
+                establishCurrentState = ESTABLISHING_COMMUNICATION;
+            }
+            break;
     }
-    return false;
+
+    return 0;
+}
+
+void Communication::resetEstablishedCommunication() {
+    establishedCommunicationIsValid = false;
 }

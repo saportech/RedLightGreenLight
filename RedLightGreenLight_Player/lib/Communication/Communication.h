@@ -2,23 +2,11 @@
 #define Communication_h
 
 #include <Arduino.h>
-#include <SPI.h>
-#include <LoRa.h>
+#include <painlessMesh.h>
 #include "Game.h"
 #include "Player.h"
 
-#define SCK     18
-#define MISO    19
-#define MOSI    23
-#define SS      5
-#define RST     15
-#define DI0     4
-
-#define BAND    433E6
-
-#define BRAIN_ID 9
-
-enum class MessageType : byte {
+enum class MessageType : int {
     ESTABLISH,
     GAME,
     UNKNOWN
@@ -35,28 +23,38 @@ public:
     };
 
     Communication();
-    void receiveData(int playerId);
+    void begin(int playerId);
+    void receiveData();
     Msg getMsg();
-    void sendMessage(int id, PlayerStatus player_status);
-    void begin();
-    bool establishedCommunication(int playerId);
-    void printMessageDetails(const Msg& message);
-    const char* gameStateToString(GameState state);
-    const char* playerStatusToString(PlayerStatus status);
-    
+    void sendMessage(int id_sender, int id_receiver, int sensitivity, GameState game_state, PlayerStatus player_status);
+    bool establishedCommunication(Msg message, int playerId);
+    void resetMsg();
+    void resetEstablishedCommunication();
 
 private:
     Msg message;
-    bool messageReceived;
     enum class CommunicationState : byte {
         WaitingForEstablishMessage,
         SendingEstablishMessage,
         Completed
     };
-    CommunicationState currentState;
+    CommunicationState currentEstablishState;
 
-    void parseMessage(const String& incoming, int playerId);
+    void parseMessage(const String& incoming);
+    void printMessageDetails(const Msg& message);
+    const char* playerStatusToString(PlayerStatus status);
+    const char* gameStateToString(GameState state);
 
+    static void receivedCallback(uint32_t from, String &msg);
+    static void newConnectionCallback(uint32_t nodeId);
+    static void changedConnectionCallback();
+    static void nodeTimeAdjustedCallback(int32_t offset);
+
+    static bool messageReceived;
+    static String incomingMessage;
+
+    int playerId;
+    int BrainId = 9;
 };
 
 #endif

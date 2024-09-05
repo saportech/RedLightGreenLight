@@ -1,21 +1,21 @@
 #include "Player.h"
+//#define DEBUG
 
 const char* predefinedMacs[] = {
-        "AC:15:18:4B:45:E4",
-        "AC:15:18:4B:46:00",
-        "30:C9:22:B8:AD:8C",
-        "XX:XX:XX:XX:XX:04",
-        "XX:XX:XX:XX:XX:05",
-        "XX:XX:XX:XX:XX:09"
+        "AC:15:18:4B:46:58",//Speaker
+        "AC:15:18:4B:46:00",//written 2 on it
+        "AC:15:18:4B:45:E4",//written 3 on it
+        "AC:15:18:4B:45:F0",//written 4 on it
+        "AC:15:18:4B:46:50",
     };
 
 const int predefinedIds[] = {
-    1, 2, 3, 4, 5, 9
+    1, 2, 3, 4, 5
 };
 
 const int numPlayers = sizeof(predefinedMacs) / sizeof(predefinedMacs[0]);
 
-Player::Player() : _status(NOT_PLAYING) {
+Player::Player() : _status(IDLE) {
 
 }
 
@@ -53,26 +53,32 @@ void Player::assignIdFromMac() {
     char macStr[18];
     sprintf(macStr, "%02X:%02X:%02X:%02X:%02X:%02X",
             mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
-
+    #ifdef DEBUG
     Serial.print("Retrieved MAC address: ");
     Serial.println(macStr);
-
+    #endif
     for (int i = 0; i < numPlayers; ++i) {
+        #ifdef DEBUG
         Serial.println(predefinedMacs[i]);
+        #endif
         if (strcmp(macStr, predefinedMacs[i]) == 0) {
             _id = predefinedIds[i];
+            #ifdef DEBUG
             Serial.print("Assigned ID ");
             Serial.print(_id);
             Serial.print(" for MAC address ");
             Serial.println(macStr);
+            #endif
             return;
         }
     }
 
     // Default ID if MAC address is not found in the list
-    _id = 9;
+    _id = 7;
+    #ifdef DEBUG
     Serial.print("Assigned default ID ");
     Serial.print(_id);
     Serial.print(" for MAC address ");
     Serial.println(macStr);
+    #endif
 }

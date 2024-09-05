@@ -2,7 +2,7 @@
 
 Game::Game() {
     _state = PRE_GAME; // Initialize state as PRE_GAME by default
-    _sensitivity = 8; // Initialize sensitivity as 8 by default
+    _sensitivity = 7; // Initialize sensitivity as 7 by default
     _gameMode = INDIVIDUAL_AUTOMATIC; // Initialize game mode as INDIVIDUAL_AUTOMATIC by default
 }
 
@@ -15,7 +15,7 @@ GameState Game::getState() {
 }
 
 void Game::setSensitivity(int sensitivity) {
-    // Ensure sensitivity is within the range 1-9
+
     if (sensitivity >= 1 && sensitivity <= 9) {
         _sensitivity = sensitivity;
     }

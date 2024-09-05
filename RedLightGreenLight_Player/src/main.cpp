@@ -3,6 +3,9 @@
 #include "Communication.h"
 #include "Player.h"
 #include "UI.h"
+#include <BLEDevice.h>
+
+#define DEBUG
 
 Game game;
 Communication comm;
@@ -17,14 +20,30 @@ void handleGamePlayerState(GameState newGameState, PlayerStatus newPlayerStatus,
 
 void setup() {
     Serial.begin(115200);
+    #ifdef DEBUG
     Serial.println("Red Light Green Light Player Unit");
-    player.begin();
-    
-    playerId = player.getId();
-    Serial.println("Player ID: " + String(playerId));
-    
-    comm.begin();
+    #endif
+
     ui.setup();
+
+    player.begin();
+    playerId = player.getId();
+    
+    comm.begin(playerId);
+
+    BLEDevice::init("Player"); // Set the device name
+
+    // Create BLE Advertising instance
+    BLEAdvertising *pAdvertising = BLEDevice::getAdvertising();
+    pAdvertising->setAppearance(0x0000); // Optional: Set appearance to a default value
+    pAdvertising->setScanResponse(false); // Optional: Set scan response to false
+    pAdvertising->setMinPreferred(0x06);  // Set the min preferred interval (in units of 0.625 ms)
+    pAdvertising->setMaxPreferred(0x12);  // Set the max preferred interval (in units of 0.625 ms)
+
+    // Start advertising
+    BLEDevice::startAdvertising();
+    //Serial.println("BLE Advertising started");
+    
 
 }
 
@@ -46,11 +65,14 @@ void playerStateMachine() {
         WAIT_FOR_RED_LIGHT,
         CHECK_IF_MOVED_DURING_RED_LIGHT,
         MOVED_DURING_RED_LIGHT,
+        STATE_CELEBRATE_VICTORY,
         STATE_GAMEOVER
     };
 
     Communication::Msg message;
+    comm.receiveData();
     message = comm.getMsg();
+    ui.updateReactions(game.getState(), player.getStatus());
 
     if (message.game_state == GAME_OVER) {
         state = STATE_GAMEOVER;
@@ -58,63 +80,79 @@ void playerStateMachine() {
 
     switch (state) {
         case COMMUNICATION_SETUP:
-            comm.receiveData(playerId);
-            Serial.println("Communication established");
-            state = START;
+            if (comm.establishedCommunication(message, playerId) ||
+                (message.player_status == PLAYING && player.getStatus() != PLAYING ) ) {
+                handleGamePlayerState(PRE_GAME, ESTABLISHED_COMMUNICATION, message.sensitivity);
+                ui.playSound(READY_SOUND);
+                #ifdef DEBUG
+                Serial.println("Communication established");
+                #endif
+                state = START;
+            }
             break;
-        case START:
-            comm.receiveData(playerId);
-            if (message.game_state == GAME_BEGIN) {
+        case START://State will be GREEN after GAME_BEGIN
+            if (message.game_state == GAME_BEGIN && game.getState() != GAME_BEGIN || 
+                (message.player_status == PLAYING && player.getStatus() != PLAYING)) {
+                ui.resetVibrateFlag();
                 handleGamePlayerState(GAME_BEGIN, PLAYING, message.sensitivity);
-                handleGamePlayerState(GREEN, PLAYING, message.sensitivity);
                 gameOverExecuted = false;
-                state = WAIT_FOR_RED_LIGHT;
                 break;
+            }
+            if (game.getState() == GAME_BEGIN) {
+                if (message.game_state == RED) {
+                    handleGamePlayerState(RED, player.getStatus(), message.sensitivity);
+                    state = CHECK_IF_MOVED_DURING_RED_LIGHT;
+                }
             }
             break;
         case WAIT_FOR_RED_LIGHT://State is GREEN
-            comm.receiveData(playerId);
             if (message.game_state == RED) {
                 handleGamePlayerState(RED, player.getStatus(), message.sensitivity);
                 state = CHECK_IF_MOVED_DURING_RED_LIGHT;
             } else if (message.player_status == CROSSED_FINISH_LINE) {
+                ui.playSound(MISSION_ACCOMPLISHED_SOUND);
                 handleGamePlayerState(GREEN, CROSSED_FINISH_LINE, message.sensitivity);
-                state = STATE_GAMEOVER;
+                ui.resetVibrateFlag();
+                previousMillis = millis();
+                state = STATE_CELEBRATE_VICTORY;
             }
             break;
         case CHECK_IF_MOVED_DURING_RED_LIGHT://State is RED
-            comm.receiveData(playerId);
-            if (player.movedDuringRedLight(game.getSensitivity())) {
-                handleGamePlayerState(GAME_OVER, NOT_PLAYING, message.sensitivity);
+            if (player.movedDuringRedLight(game.getSensitivity()) && player.getStatus() == PLAYING) {
+                ui.resetVibrateFlag();
+                ui.playSound(MOVED_SOUND);
+                handleGamePlayerState(GAME_OVER, MOVED, message.sensitivity);
+                comm.sendMessage(playerId, 9, game.getSensitivity(), game.getState(), player.getStatus());
                 previousMillis = millis();
                 previousSendMillis = millis();
                 state = MOVED_DURING_RED_LIGHT;
             }
             if (message.game_state == GREEN) {
-                handleGamePlayerState(GREEN, PLAYING, message.sensitivity);
+                handleGamePlayerState(GREEN, player.getStatus(), message.sensitivity);
                 state = WAIT_FOR_RED_LIGHT;
             }
             break;
         case MOVED_DURING_RED_LIGHT:
-            comm.receiveData(playerId);
-            if (millis() - previousSendMillis > 1000) {
-                comm.sendMessage(playerId, player.getStatus());
-                Serial.println("Player " + String(playerId) + " sent moved to the brain");
-                Serial.println("message id_receiver: " + String(message.id_receiver) + " player_status: " + String(message.player_status));
+            if (millis() - previousSendMillis > 3000) {
+                comm.sendMessage(playerId, 9, game.getSensitivity(), game.getState(), player.getStatus());
                 previousSendMillis = millis();
             }
             if (message.id_receiver == playerId && message.player_status == NOT_PLAYING) {
-                Serial.println("Player " + String(playerId) + " got the ACK from the brain");
+                //Serial.println("Player " + String(playerId) + " got the ACK from the brain");
+                state = STATE_GAMEOVER;
+            }
+            break;
+        case STATE_CELEBRATE_VICTORY:
+            if (millis() - previousMillis > 4000) {
                 state = STATE_GAMEOVER;
             }
             break;
         case STATE_GAMEOVER:
-            comm.receiveData(playerId);
             if (!gameOverExecuted) {
                 handleGamePlayerState(GAME_OVER, NOT_PLAYING, message.sensitivity);
                 gameOverExecuted = true;
             }
-            state = COMMUNICATION_SETUP;
+            state = START;
             break;
     }
 }
@@ -123,11 +161,11 @@ void handleGamePlayerState(GameState newGameState, PlayerStatus newPlayerStatus,
     game.setState(newGameState);
     player.setStatus(newPlayerStatus);
     game.setSensitivity(newSensitivity);
-    ui.updateReactions(game.getState(), player.getStatus());
 
+#ifdef DEBUG
     switch (game.getState()) {
         case GAME_BEGIN:
-            Serial.print("Game started");
+            Serial.print("Game begin");
             break;
         case RED:
             Serial.print("Red light");
@@ -155,4 +193,5 @@ void handleGamePlayerState(GameState newGameState, PlayerStatus newPlayerStatus,
     }
 
     Serial.println(" Sensitivity: " + String(game.getSensitivity()));
+#endif
 }

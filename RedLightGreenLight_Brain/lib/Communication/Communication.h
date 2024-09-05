@@ -2,24 +2,10 @@
 #define Communication_h
 
 #include <Arduino.h>
-#include <SPI.h>
-#include <LoRa.h>
+#include <painlessMesh.h>
+#include <vector>
 #include "Game.h"
 #include "Player.h"
-
-#define SCK     18
-#define MISO    19
-#define MOSI    23
-#define SS      5
-#define RST     15
-#define DI0     4
-
-#define BAND    433E6
-
-#define BRAIN_ID 100
-
-const float RSSI_d0 = -40.0;  // Example RSSI at 1 meter (d0)
-const float n = 2.0;          // Path loss exponent (free space)
 
 enum class MessageType : int {
     ESTABLISH,
@@ -31,6 +17,9 @@ class Communication {
 public:
     struct Msg {
         int id_sender;
+        int id_receiver;
+        int sensitivity;
+        GameState game_state;
         PlayerStatus player_status;
     };
 
@@ -38,23 +27,33 @@ public:
     void begin();
     void receiveData();
     Msg getMsg();
-    void sendMessage(int id, int sensitivity, GameState game_state, PlayerStatus player_status);
-    bool establishedCommunication(int playerId);
+    void sendMessage(int id_sender, int id_receiver, int sensitivity, GameState game_state, PlayerStatus player_status);
+    int establishedCommunication(Msg message, const std::vector<int>& playerIDs);
+
     void resetMsg();
+    void resetEstablishedCommunication();
 
 private:
     Msg message;
-    bool messageReceived;
-    enum class CommunicationState : byte {
-        WaitingForEstablishMessage,
-        SendingEstablishMessage,
+    enum class CommunicationState {
+        WaitingForEstablishMessages,
         Completed
     };
-    CommunicationState currentState;
 
     void parseMessage(const String& incoming);
     void printMessageDetails(const Msg& message);
-    const char* playerStatusToString(PlayerStatus status);
+
+    static void receivedCallback(uint32_t from, String &msg);
+    static void newConnectionCallback(uint32_t nodeId);
+    static void changedConnectionCallback();
+    static void nodeTimeAdjustedCallback(int32_t offset);
+
+    static bool messageReceived;
+    static String incomingMessage;
+    bool establishedCommunicationIsValid;
+
+    static const size_t MAX_PLAYERS = 10;
+    bool playerAcknowledged[MAX_PLAYERS];
 };
 
 #endif

@@ -49,8 +49,6 @@ bool MPU6050_ESP32::isMovementDetected(int userThreshold) {
     int absoluteSum = abs(ax) + abs(ay) + abs(az) + abs(gx) + abs(gy) + abs(gz);
   
     lastSampleTime = currentTime;
-
-    //Serial.println(absoluteSum);
     
     return (absoluteSum > threshold);
   }
