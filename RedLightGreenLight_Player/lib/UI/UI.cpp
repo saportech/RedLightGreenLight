@@ -25,7 +25,7 @@ void UI::setup() {
     }
 
     Serial2.begin(9600, SERIAL_8N1, 34, 13);
-    setVolume(15);
+    setVolume(30);
 
     resetVibrateFlag();
 }
@@ -91,14 +91,15 @@ void UI::vibrateMotor() {
     if (motorActivated) {
         unsigned long currentMillis = millis();
 
-        if (currentMillis - lastToggleMillis >= 200) {
-            lastToggleMillis = currentMillis;
-            motorOn = !motorOn;
-            digitalWrite(vibrationMotorPin1, motorOn ? HIGH : LOW);  // Toggle motor state
-        }
+        // if (currentMillis - lastToggleMillis >= 200) {
+        //     lastToggleMillis = currentMillis;
+        //     motorOn = !motorOn;
+        //     digitalWrite(vibrationMotorPin1, motorOn ? HIGH : LOW);  // Toggle motor state
+        // }
 
         if (currentMillis - startMillis >= 1000) {
-            digitalWrite(vibrationMotorPin1, LOW);  // Ensure motor is off
+            digitalWrite(vibrationMotorPin1, LOW);
+            //motorOn = false;
         }
     }
 }

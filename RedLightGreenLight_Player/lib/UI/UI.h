@@ -31,7 +31,7 @@ private:
     CRGB leds[NUM_LEDS];
     int vibrationMotorPin1 = 12;
     int vibrationMotorPin2 = 14;
-    uint8_t ledBrightness = 5;
+    uint8_t ledBrightness = 30;
     void executeCMD(byte CMD, byte Par1, byte Par2);
     bool motorActivated = false;
 };

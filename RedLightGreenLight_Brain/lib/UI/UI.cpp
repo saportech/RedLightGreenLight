@@ -31,7 +31,7 @@ void UI::setupPinsAndSensors() {
     pinMode(IO_IN, INPUT_PULLUP);
 
     Serial2.begin(9600, SERIAL_8N1, 34, 12);
-    setVolume(15);
+    setVolume(30);
 
 }
 
@@ -70,8 +70,17 @@ void UI::selectMuxChannel(int channel) {
 }
 
 void UI::updateLEDs(GameState gameState, GameMode gameMode, Player players[], int numPlayers) {
-static unsigned long lastUpdateMillis = millis();
+    static unsigned long lastUpdateMillis = millis();
+    static const int gameStateLeds[] = {
+        GAME_STATE_LED, GAME_STATE_LED1, GAME_STATE_LED2, GAME_STATE_LED3, GAME_STATE_LED4, 
+        GAME_STATE_LED5, GAME_STATE_LED6, GAME_STATE_LED7, GAME_STATE_LED8, GAME_STATE_LED9,
+        GAME_STATE_LED10, GAME_STATE_LED11, GAME_STATE_LED12, GAME_STATE_LED13, GAME_STATE_LED14,
+        GAME_STATE_LED15, GAME_STATE_LED16, GAME_STATE_LED17, GAME_STATE_LED18, GAME_STATE_LED19,
+        GAME_STATE_LED20, GAME_STATE_LED21, GAME_STATE_LED22, GAME_STATE_LED23, GAME_STATE_LED24, GAME_STATE_LED25, GAME_STATE_LED26
+    };
+    const int numGameStateLeds = sizeof(gameStateLeds) / sizeof(gameStateLeds[0]);
 
+    // Update player LEDs
     for (int i = 0; i < numPlayers; i++) {
         if (gameState == GAME_OVER) {
             leds[i] = CRGB::Yellow; // Turn all player LEDs yellow if the game is over
@@ -97,25 +106,33 @@ static unsigned long lastUpdateMillis = millis();
         leds[i].nscale8(BRIGHTNESS_SCALE);  // Apply brightness scale
     }
 
+    // Update game state LEDs
+    CRGB gameStateColor;
     switch (gameState) {
         case GAME_BEGIN:
-            leds[GAME_STATE_LED] = CRGB::Green;
+            gameStateColor = CRGB::Green;
             break;
         case GREEN:
-            leds[GAME_STATE_LED] = CRGB::Green;
+            gameStateColor = CRGB::Green;
             break;
         case RED:
-            leds[GAME_STATE_LED] = CRGB::Red;
+            gameStateColor = CRGB::Red;
             break;
         case GAME_OVER:
-            leds[GAME_STATE_LED] = CRGB::Yellow;
+            gameStateColor = CRGB::Yellow;
             break;
         default:
-            leds[GAME_STATE_LED] = CRGB::Orange;
+            gameStateColor = CRGB::Orange;
             break;
     }
-    leds[GAME_STATE_LED].nscale8(BRIGHTNESS_SCALE);
+
+    // Apply the selected color to all game state LEDs
+    for (int i = 0; i < numGameStateLeds; i++) {
+        leds[gameStateLeds[i]] = gameStateColor;
+        leds[gameStateLeds[i]].nscale8(BRIGHTNESS_SCALE);  // Apply brightness scale
+    }
     
+    // Update game mode LEDs
     switch (gameMode) {
         case INDIVIDUAL_AUTOMATIC:
             leds[AUTOMATIC_LED] = CRGB::Green;

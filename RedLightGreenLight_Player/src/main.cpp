@@ -5,7 +5,7 @@
 #include "UI.h"
 #include <BLEDevice.h>
 
-#define DEBUG
+//#define DEBUG
 
 Game game;
 Communication comm;
@@ -62,10 +62,11 @@ void playerStateMachine() {
     enum RED_GREEN_STATE_TYPE {
         COMMUNICATION_SETUP,
         START,
-        WAIT_FOR_RED_LIGHT,
+        GREEN_LIGHT,
+        WAIT_BEFORE_RED_LIGHT,
         CHECK_IF_MOVED_DURING_RED_LIGHT,
         MOVED_DURING_RED_LIGHT,
-        STATE_CELEBRATE_VICTORY,
+        STATE_CELEBRATE_VICTORY_OR_LOSS,
         STATE_GAMEOVER
     };
 
@@ -93,7 +94,6 @@ void playerStateMachine() {
         case START://State will be GREEN after GAME_BEGIN
             if (message.game_state == GAME_BEGIN && game.getState() != GAME_BEGIN || 
                 (message.player_status == PLAYING && player.getStatus() != PLAYING)) {
-                ui.resetVibrateFlag();
                 handleGamePlayerState(GAME_BEGIN, PLAYING, message.sensitivity);
                 gameOverExecuted = false;
                 break;
@@ -101,20 +101,27 @@ void playerStateMachine() {
             if (game.getState() == GAME_BEGIN) {
                 if (message.game_state == RED) {
                     handleGamePlayerState(RED, player.getStatus(), message.sensitivity);
-                    state = CHECK_IF_MOVED_DURING_RED_LIGHT;
+                    previousMillis = millis();
+                    state = WAIT_BEFORE_RED_LIGHT;
                 }
             }
             break;
-        case WAIT_FOR_RED_LIGHT://State is GREEN
+        case GREEN_LIGHT://State is GREEN
             if (message.game_state == RED) {
                 handleGamePlayerState(RED, player.getStatus(), message.sensitivity);
-                state = CHECK_IF_MOVED_DURING_RED_LIGHT;
+                previousMillis = millis();
+                state = WAIT_BEFORE_RED_LIGHT;
             } else if (message.player_status == CROSSED_FINISH_LINE) {
                 ui.playSound(MISSION_ACCOMPLISHED_SOUND);
                 handleGamePlayerState(GREEN, CROSSED_FINISH_LINE, message.sensitivity);
                 ui.resetVibrateFlag();
                 previousMillis = millis();
-                state = STATE_CELEBRATE_VICTORY;
+                state = STATE_CELEBRATE_VICTORY_OR_LOSS;
+            }
+            break;
+        case WAIT_BEFORE_RED_LIGHT://State is before RED
+            if (millis() - previousMillis >= 2000) {
+                state = CHECK_IF_MOVED_DURING_RED_LIGHT;
             }
             break;
         case CHECK_IF_MOVED_DURING_RED_LIGHT://State is RED
@@ -129,7 +136,7 @@ void playerStateMachine() {
             }
             if (message.game_state == GREEN) {
                 handleGamePlayerState(GREEN, player.getStatus(), message.sensitivity);
-                state = WAIT_FOR_RED_LIGHT;
+                state = GREEN_LIGHT;
             }
             break;
         case MOVED_DURING_RED_LIGHT:
@@ -139,10 +146,11 @@ void playerStateMachine() {
             }
             if (message.id_receiver == playerId && message.player_status == NOT_PLAYING) {
                 //Serial.println("Player " + String(playerId) + " got the ACK from the brain");
-                state = STATE_GAMEOVER;
+                previousSendMillis = millis();
+                state = STATE_CELEBRATE_VICTORY_OR_LOSS;
             }
             break;
-        case STATE_CELEBRATE_VICTORY:
+        case STATE_CELEBRATE_VICTORY_OR_LOSS:
             if (millis() - previousMillis > 4000) {
                 state = STATE_GAMEOVER;
             }

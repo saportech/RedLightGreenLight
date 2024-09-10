@@ -62,6 +62,7 @@ void brainStateMachine() {
     static int state = 0;
     static unsigned long previousMillis = 0;
     static unsigned long nextChangeMillis = 0;
+    static unsigned long previousMillisGreenDelay = 0;
     int establishRes = 0;
 
     Communication::Msg message;
@@ -71,12 +72,15 @@ void brainStateMachine() {
         START,
         GREEN_LIGHT, 
         WAIT_FOR_MOVEMENT_DETECTION_DURING_RED_LIGHT,
+        GREEN_LIGHT_DELAY,
         STATE_GAMEOVER
     };
 
     comm.receiveData();
     sendMessageToAllPlayers(game.getState());
-    ui.updateLEDs(game.getState(),game.getGameMode(), players, NUM_PLAYERS);
+    if (state != GREEN_LIGHT_DELAY) {
+        ui.updateLEDs(game.getState(),game.getGameMode(), players, NUM_PLAYERS);    
+    }
 
     if (pressedButton == END_GAME_PRESSED) {
         handleGameState(GAME_OVER);
@@ -89,11 +93,14 @@ void brainStateMachine() {
             if (state == GREEN_LIGHT || (state == START && game.getState() == GAME_BEGIN)) {
                 comm.resetMsg();
                 handleGameState(RED);
+                comm.sendMessage(9, 9, game.getSensitivity(), game.getState(), IDLE);
                 state = WAIT_FOR_MOVEMENT_DETECTION_DURING_RED_LIGHT;
                 nextChangeMillis = getRandomTime(4000, 10000); // Set a new random time
             } else if (state == WAIT_FOR_MOVEMENT_DETECTION_DURING_RED_LIGHT) {
                 handleGameState(GREEN);
-                state = GREEN_LIGHT;
+                comm.sendMessage(9, 9, game.getSensitivity(), game.getState(), IDLE);
+                previousMillisGreenDelay = millis();
+                state = GREEN_LIGHT_DELAY;
                 nextChangeMillis = getRandomTime(4000, 10000); // Set a new random time
             }
             previousMillis = millis();
@@ -154,7 +161,8 @@ void brainStateMachine() {
             if (pressedButton == GREEN_PRESSED) {
                 handleGameState(GREEN);
                 comm.sendMessage(9, 9, game.getSensitivity(), game.getState(), IDLE);
-                state = GREEN_LIGHT;
+                previousMillisGreenDelay = millis();
+                state = GREEN_LIGHT_DELAY;
             }
             for (int i = 0; i < NUM_PLAYERS; i++) {
                 if (message.id_sender == players[i].getId() && message.player_status == MOVED && players[i].getStatus() == PLAYING) {
@@ -163,6 +171,11 @@ void brainStateMachine() {
                 }
             }
             comm.resetMsg();
+            break;
+        case GREEN_LIGHT_DELAY:
+            if (millis() - previousMillisGreenDelay >= 2000) {
+                state = GREEN_LIGHT;
+            }
             break;
         case STATE_GAMEOVER:
             resetValues(GAME_OVER);
@@ -204,7 +217,7 @@ void handleGameState(GameState newGameState) {
 
     switch (game.getState()) {
         case GAME_BEGIN:
-            Serial.println("Game begin");
+            Serial.print("Game begin");
             ui.playSound(GAME_BEGIN_SOUND);
             break;
         case RED:

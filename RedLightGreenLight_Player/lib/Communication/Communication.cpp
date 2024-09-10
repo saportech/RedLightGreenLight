@@ -5,7 +5,7 @@
 #define MESH_PASSWORD "myMeshPass"
 #define MESH_PORT 7777
 
-#define DEBUG
+//#define DEBUG
 
 // Instantiate the mesh network
 painlessMesh mesh;

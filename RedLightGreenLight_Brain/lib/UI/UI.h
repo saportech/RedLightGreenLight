@@ -9,7 +9,7 @@
 #include "Player.h"
 
 // Pin definitions
-#define NUM_LEDS 10
+#define NUM_LEDS 38  // Increased to handle the 6 additional LEDs
 #define DATA_PIN 26
 
 #define SEL0 2
@@ -52,7 +52,35 @@ enum LED_INDEX {
     TEAM_LED,
     INDIVIDUAL_LED,
     AUTOMATIC_LED,
-    MANUAL_LED
+    MANUAL_LED,
+    // Additional Game State LEDs
+    GAME_STATE_LED1,
+    GAME_STATE_LED2,
+    GAME_STATE_LED3,
+    GAME_STATE_LED4,
+    GAME_STATE_LED5,
+    GAME_STATE_LED6,
+    GAME_STATE_LED7,
+    GAME_STATE_LED8,
+    GAME_STATE_LED9,
+    GAME_STATE_LED10,
+    GAME_STATE_LED11,
+    GAME_STATE_LED12,
+    GAME_STATE_LED13,
+    GAME_STATE_LED14,
+    GAME_STATE_LED15,
+    GAME_STATE_LED16,
+    GAME_STATE_LED17,
+    GAME_STATE_LED18,
+    GAME_STATE_LED19,
+    GAME_STATE_LED20,
+    // Adding 6 more LEDs
+    GAME_STATE_LED21,
+    GAME_STATE_LED22,
+    GAME_STATE_LED23,
+    GAME_STATE_LED24,
+    GAME_STATE_LED25,
+    GAME_STATE_LED26
 };
 
 // Sound types
@@ -64,7 +92,7 @@ enum SOUND_TYPE {
     ALL_PLAYERS_READY_SOUND
 };
 
-#define BRIGHTNESS_SCALE 15
+#define BRIGHTNESS_SCALE 255
 
 class UI {
 public:
