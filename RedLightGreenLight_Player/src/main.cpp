@@ -5,7 +5,7 @@
 #include "UI.h"
 #include <BLEDevice.h>
 
-//#define DEBUG
+#define DEBUG
 
 Game game;
 Communication comm;
@@ -21,6 +21,7 @@ void handleGamePlayerState(GameState newGameState, PlayerStatus newPlayerStatus,
 void setup() {
     Serial.begin(115200);
     #ifdef DEBUG
+    delay(3000);
     Serial.println("Red Light Green Light Player Unit");
     #endif
 
@@ -28,23 +29,21 @@ void setup() {
 
     player.begin();
     playerId = player.getId();
-    
+    //playerId = 1;
     comm.begin(playerId);
+        
+    // BLEDevice::init("Player"); 
 
-    BLEDevice::init("Player"); // Set the device name
+    // BLEAdvertising *pAdvertising = BLEDevice::getAdvertising();
+    // pAdvertising->setAppearance(0x0000);
+    // pAdvertising->setScanResponse(false);
+    // pAdvertising->setMinPreferred(0x06);
+    // pAdvertising->setMaxPreferred(0x12);
 
-    // Create BLE Advertising instance
-    BLEAdvertising *pAdvertising = BLEDevice::getAdvertising();
-    pAdvertising->setAppearance(0x0000); // Optional: Set appearance to a default value
-    pAdvertising->setScanResponse(false); // Optional: Set scan response to false
-    pAdvertising->setMinPreferred(0x06);  // Set the min preferred interval (in units of 0.625 ms)
-    pAdvertising->setMaxPreferred(0x12);  // Set the max preferred interval (in units of 0.625 ms)
-
-    // Start advertising
-    BLEDevice::startAdvertising();
-    //Serial.println("BLE Advertising started");
+    // // Start advertising
+    // BLEDevice::startAdvertising();
+    // Serial.println("BLE Advertising started");
     
-
 }
 
 void loop() {

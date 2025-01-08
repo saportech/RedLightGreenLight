@@ -24,13 +24,13 @@ void UI::setup() {
         FastLED.show();
     }
 
-    Serial2.begin(9600, SERIAL_8N1, 34, 13);
-    setVolume(30);
+    setupAudio();
 
     resetVibrateFlag();
 }
 
 void UI::updateReactions(int gameState, int playerStatus) {
+    audio.loop();
     updateLEDs(gameState, playerStatus);  // Update LEDs based on game state and player status
 
     if (playerStatus == MOVED) {
@@ -58,20 +58,47 @@ void UI::updateLEDs(int gameState, int playerStatus) {
     }
 }
 
+void UI::setupAudio() {
+
+  pinMode(SD_CS, OUTPUT);
+  digitalWrite(SD_CS, HIGH);
+  SPI.begin(SPI_SCK, SPI_MISO, SPI_MOSI);
+
+  while (!SD.begin(SD_CS)) {
+    Serial.println("Trying to initialize SD card...");
+    delay(1000);
+  }
+  Serial.println("SD card initialized.");
+
+  audio.setPinout(I2S_BCLK, I2S_LRC, I2S_DOUT);
+  audio.setVolume(21);
+
+}
+
 void UI::playSound(SOUND sound) {
-    switch (sound) {
-        case MOVED_SOUND:
-            executeCMD(0x0F, 0x01, 0x01);
-            break;
-        case READY_SOUND:
-            executeCMD(0x0F, 0x01, 0x02);
-            break;
-        case MISSION_ACCOMPLISHED_SOUND:
-            executeCMD(0x0F, 0x01, 0x03);
-            break;
-        default:
-            Serial.println("Error in playSound()");
-            break;
+    
+    if (!audio.isRunning()) {
+        switch (sound) {
+            case MOVED_SOUND:
+                Serial.println("Playing moved sound");
+                if (!audio.connecttoFS(SD, "/001.mp3")) {
+                    Serial.println("Failed to open audio file");
+                } else {
+                    Serial.println("Playing audio file: 001.mp3");
+                }
+                break;
+            case READY_SOUND:
+                Serial.println("Playing ready sound");
+                audio.connecttoFS(SD, "/002.mp3");
+                break;
+            case MISSION_ACCOMPLISHED_SOUND:
+                Serial.println("Playing mission accomplished sound");
+                audio.connecttoFS(SD, "/003.mp3");
+                break;
+            default:
+                Serial.println("Error in playSound()");
+                break;
+        }
     }
 }
 
@@ -106,31 +133,6 @@ void UI::vibrateMotor() {
 
 void UI::resetVibrateFlag() {
     motorActivated = false;
-}
-
-void UI::setVolume(int volume) {
-    executeCMD(0x06, 0, volume);
-    delay(100);
-}
-
-void UI::executeCMD(byte CMD, byte Par1, byte Par2) {
-    #define Start_Byte 0x7E
-    #define Version_Byte 0xFF
-    #define Command_Length 0x06
-    #define End_Byte 0xEF
-    #define Acknowledge 0x00 //Returns info with command 0x41 [0x01: info, 0x00: no info]
-    
-    // Calculate the checksum (2 bytes)
-    word checksum = -(Version_Byte + Command_Length + CMD + Acknowledge + Par1 + Par2);
-    
-    // Build the command line
-    byte Command_line[10] = { Start_Byte, Version_Byte, Command_Length, CMD, Acknowledge,
-                                Par1, Par2, highByte(checksum), lowByte(checksum), End_Byte };
-    
-    // Send the command line to the module
-    for (byte k = 0; k < 10; k++) {
-        Serial2.write(Command_line[k]);
-    }
 }
 
 void UI::setBrightness(uint8_t brightness) {

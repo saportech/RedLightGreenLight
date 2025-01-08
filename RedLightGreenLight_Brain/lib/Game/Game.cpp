@@ -1,12 +1,22 @@
 #include "Game.h"
+//Old macs
+// const char* predefinedMacs[] = {
+//         "ac:15:18:4b:46:5a",//Speaker
+//         "ac:15:18:4b:46:02",//written 2 on it
+//         "ac:15:18:4b:45:e6",//written 3 on it
+//         "ac:15:18:4b:45:f2",//written 4 on it
+//         "ac:15:18:4b:46:52",
+//     };
 
-const char* predefinedMacs[] = {
-        "ac:15:18:4b:46:5a",//Speaker
+
+    const char* predefinedMacs[] = {
+        "88:13:bf:60:bd:a0",//Speaker
         "ac:15:18:4b:46:02",//written 2 on it
         "ac:15:18:4b:45:e6",//written 3 on it
         "ac:15:18:4b:45:f2",//written 4 on it
         "ac:15:18:4b:46:52",
     };
+
 
 const int predefinedIds[] = {
     1, 2, 3, 4, 5

@@ -2,8 +2,8 @@
 #define Player_h
 
 #include <Arduino.h>
-#include "MPU6050_ESP32.h"
 #include <WiFi.h>
+#include "IMU.h"
 
 enum PlayerStatus {
     IDLE,
@@ -27,7 +27,8 @@ public:
 private:
     int _id;
     PlayerStatus _status;
-    MPU6050_ESP32 mpu;
+    //MPU6050_ESP32 mpu;
+    IMU mpu;
 
     void assignIdFromMac();
 };

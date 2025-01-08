@@ -1,13 +1,21 @@
 #include "Player.h"
-//#define DEBUG
+#define DEBUG
+
+// const char* predefinedMacs[] = {
+//         "AC:15:18:4B:46:58",//Speaker
+//         "AC:15:18:4B:46:00",//written 2 on it
+//         "AC:15:18:4B:45:E4",//written 3 on it
+//         "AC:15:18:4B:45:F0",//written 4 on it
+//         "AC:15:18:4B:46:50",
+//     };
 
 const char* predefinedMacs[] = {
-        "AC:15:18:4B:46:58",//Speaker
-        "AC:15:18:4B:46:00",//written 2 on it
-        "AC:15:18:4B:45:E4",//written 3 on it
-        "AC:15:18:4B:45:F0",//written 4 on it
-        "AC:15:18:4B:46:50",
-    };
+    "88:13:BF:60:BD:A0",//Speaker
+    "AC:15:18:4B:46:00",//written 2 on it
+    "AC:15:18:4B:45:E4",//written 3 on it
+    "AC:15:18:4B:45:F0",//written 4 on it
+    "AC:15:18:4B:46:50",
+};
 
 const int predefinedIds[] = {
     1, 2, 3, 4, 5
@@ -42,7 +50,6 @@ bool Player::movedDuringRedLight(int threshold) {
         threshold = 8;
     }
 
-    // Check for movement using MPU6050 sensor
     return mpu.isMovementDetected(threshold);
 }
 
