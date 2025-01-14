@@ -1,48 +1,36 @@
 #include <Arduino.h>
 #include "Game.h"
-#include "Communication.h"
+#include "Com.h"
 #include "Player.h"
 #include "UI.h"
-#include <BLEDevice.h>
 
-#define DEBUG
+#define DEBUG 1
 
 Game game;
-Communication comm;
+Com comm;
 Player player;
 UI ui;
 
-unsigned long lastMillis = millis();
 int playerId;
 
 void playerStateMachine();
 void handleGamePlayerState(GameState newGameState, PlayerStatus newPlayerStatus, int newSensitivity);
+void scanBrain();
+void loopAnalysis();
 
 void setup() {
     Serial.begin(115200);
     #ifdef DEBUG
-    delay(3000);
-    Serial.println("Red Light Green Light Player Unit");
+        Serial.println("Red Light Green Light Player Unit");
+        delay(3000);
     #endif
 
     ui.setup();
 
     player.begin();
     playerId = player.getId();
-    //playerId = 1;
+
     comm.begin(playerId);
-        
-    // BLEDevice::init("Player"); 
-
-    // BLEAdvertising *pAdvertising = BLEDevice::getAdvertising();
-    // pAdvertising->setAppearance(0x0000);
-    // pAdvertising->setScanResponse(false);
-    // pAdvertising->setMinPreferred(0x06);
-    // pAdvertising->setMaxPreferred(0x12);
-
-    // // Start advertising
-    // BLEDevice::startAdvertising();
-    // Serial.println("BLE Advertising started");
     
 }
 
@@ -57,6 +45,7 @@ void playerStateMachine() {
     static bool gameOverExecuted = false;
     static unsigned long previousMillis = 0;
     static unsigned long previousSendMillis = 0;
+    static unsigned long previousPrintMillis = 0;
 
     enum RED_GREEN_STATE_TYPE {
         COMMUNICATION_SETUP,
@@ -69,10 +58,35 @@ void playerStateMachine() {
         STATE_GAMEOVER
     };
 
-    Communication::Msg message;
+    Com::Msg message;
     comm.receiveData();
     message = comm.getMsg();
     ui.updateReactions(game.getState(), player.getStatus());
+    game.setSensitivity(message.sensitivity);
+
+    if (millis() - previousPrintMillis > 3000) {
+        previousPrintMillis = millis();
+        #ifdef DEBUG
+        Serial.print("Player ID: " + String(playerId));
+        Serial.print(" State: ");
+        switch (state) {
+            case COMMUNICATION_SETUP: Serial.print("COMMUNICATION_SETUP"); break;
+            case START: Serial.print("START"); break;
+            case GREEN_LIGHT: Serial.print("GREEN_LIGHT"); break;
+            case WAIT_BEFORE_RED_LIGHT: Serial.print("WAIT_BEFORE_RED_LIGHT"); break;
+            case CHECK_IF_MOVED_DURING_RED_LIGHT: Serial.print("CHECK_IF_MOVED_DURING_RED_LIGHT"); break;
+            case MOVED_DURING_RED_LIGHT: Serial.print("MOVED_DURING_RED_LIGHT"); break;
+            case STATE_CELEBRATE_VICTORY_OR_LOSS: Serial.print("STATE_CELEBRATE_VICTORY_OR_LOSS"); break;
+            case STATE_GAMEOVER: Serial.print("STATE_GAMEOVER"); break;
+            default: Serial.print("UNKNOWN_STATE"); break;
+        }
+        Serial.print(" Message: " + String(message.id_sender) + " " + String(message.id_receiver) + " " + String(comm.gameStateToString(message.game_state)) + " " + String(comm.playerStatusToString((message.player_status))));
+        Serial.print(" Game state: " + String(comm.gameStateToString(game.getState())));
+        Serial.print(" Player status: " + String(comm.playerStatusToString(player.getStatus())));
+        Serial.println(" Sensitivity: " + String(message.sensitivity));
+
+        #endif
+    }
 
     if (message.game_state == GAME_OVER) {
         state = STATE_GAMEOVER;
@@ -129,6 +143,7 @@ void playerStateMachine() {
                 ui.playSound(MOVED_SOUND);
                 handleGamePlayerState(GAME_OVER, MOVED, message.sensitivity);
                 comm.sendMessage(playerId, 9, game.getSensitivity(), game.getState(), player.getStatus());
+                Serial.println("Player " + String(playerId) + " moved during red light");
                 previousMillis = millis();
                 previousSendMillis = millis();
                 state = MOVED_DURING_RED_LIGHT;
@@ -144,7 +159,7 @@ void playerStateMachine() {
                 previousSendMillis = millis();
             }
             if (message.id_receiver == playerId && message.player_status == NOT_PLAYING) {
-                //Serial.println("Player " + String(playerId) + " got the ACK from the brain");
+                Serial.println("Player " + String(playerId) + " got the ACK from the brain");
                 previousSendMillis = millis();
                 state = STATE_CELEBRATE_VICTORY_OR_LOSS;
             }
@@ -202,3 +217,43 @@ void handleGamePlayerState(GameState newGameState, PlayerStatus newPlayerStatus,
     Serial.println(" Sensitivity: " + String(game.getSensitivity()));
 #endif
 }
+
+void loopAnalysis()
+{
+  static unsigned long previousMillis = 0;
+  static unsigned long lastMillis = 0;
+  static unsigned long minLoopTime = 0xFFFFFFFF;
+  static unsigned long maxLoopTime = 0;
+  static unsigned long loopCounter = 0;
+
+  #define INTERVAL 1000
+
+  unsigned long currentMillis = millis();
+  if ( currentMillis - previousMillis > INTERVAL )
+  {
+    Serial.print( "Loops: " );
+    Serial.print( loopCounter );
+    Serial.print( " ( " );
+    Serial.print( minLoopTime );
+    Serial.print( " / " );
+    Serial.print( maxLoopTime );
+    Serial.println( " )" );
+    previousMillis = currentMillis;
+    loopCounter = 0;
+    minLoopTime = 0xFFFFFFFF;
+    maxLoopTime = 0;
+  }
+  loopCounter++;
+  unsigned long loopTime = currentMillis - lastMillis;
+  lastMillis = currentMillis;
+  if ( loopTime < minLoopTime )
+  {
+    minLoopTime = loopTime;
+  }
+  if ( loopTime > maxLoopTime )
+  {
+    maxLoopTime = loopTime;
+  }
+
+}
+

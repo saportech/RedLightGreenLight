@@ -1,14 +1,14 @@
 #include <Arduino.h>
 #include <vector>
 #include "Game.h"
-#include "Communication.h"
+#include "Com.h"
 #include "Player.h"
 #include "UI.h"
 
-#define NUM_PLAYERS 5
+#define NUM_PLAYERS 2
 std::vector<int> playerIDs(NUM_PLAYERS);
 
-Communication comm;
+Com comm;
 Player players[NUM_PLAYERS];
 Game game;
 UI ui;
@@ -20,6 +20,8 @@ void handleGameState(GameState newGameState);
 void uiUpdate();
 void resetValues(int resetType);
 unsigned long getRandomTime(unsigned long minTime, unsigned long maxTime);
+const char* getStateName(int state);
+const char* getGameStateName(GameState gameState);
 void loopAnalysis();
 
 void setup() {
@@ -46,6 +48,13 @@ void setup() {
 
     resetValues(PRE_GAME);
 
+    BLEDevice::init("ESP32_Brain");
+    BLEServer *pServer = BLEDevice::createServer();
+    BLEAdvertising *pAdvertising = BLEDevice::getAdvertising();
+    pAdvertising->setScanResponse(true);
+    BLEAdvertisementData advData;
+    advData.setName("ESP32_Brain"); // Device name
+    pAdvertising->start();
 }
 
 void loop() {
@@ -65,7 +74,7 @@ void brainStateMachine() {
     static unsigned long previousMillisGreenDelay = 0;
     int establishRes = 0;
 
-    Communication::Msg message;
+    Com::Msg message;
 
     enum RED_GREEN_STATE_TYPE { 
         CHECK_COMMUNICATION,
@@ -76,8 +85,18 @@ void brainStateMachine() {
         STATE_GAMEOVER
     };
 
+    static unsigned long lastPrintMillis = 0;
+    if (millis() - lastPrintMillis >= 2000) {
+        Serial.print("Brain State: ");
+        Serial.print(getStateName(state));
+        Serial.print(", Game State: ");
+        Serial.println(getGameStateName(game.getState()));
+        lastPrintMillis = millis();
+    }
+
     comm.receiveData();
     sendMessageToAllPlayers(game.getState());
+
     if (state != GREEN_LIGHT_DELAY) {
         ui.updateLEDs(game.getState(),game.getGameMode(), players, NUM_PLAYERS);    
     }
@@ -93,12 +112,10 @@ void brainStateMachine() {
             if (state == GREEN_LIGHT || (state == START && game.getState() == GAME_BEGIN)) {
                 comm.resetMsg();
                 handleGameState(RED);
-                comm.sendMessage(9, 9, game.getSensitivity(), game.getState(), IDLE);
                 state = WAIT_FOR_MOVEMENT_DETECTION_DURING_RED_LIGHT;
                 nextChangeMillis = getRandomTime(4000, 10000); // Set a new random time
             } else if (state == WAIT_FOR_MOVEMENT_DETECTION_DURING_RED_LIGHT) {
                 handleGameState(GREEN);
-                comm.sendMessage(9, 9, game.getSensitivity(), game.getState(), IDLE);
                 previousMillisGreenDelay = millis();
                 state = GREEN_LIGHT_DELAY;
                 nextChangeMillis = getRandomTime(4000, 10000); // Set a new random time
@@ -135,32 +152,30 @@ void brainStateMachine() {
                 if (pressedButton == RED_PRESSED) {
                     comm.resetMsg();
                     handleGameState(RED);
-                    comm.sendMessage(9, 9, game.getSensitivity(), game.getState(), IDLE);
                     state = WAIT_FOR_MOVEMENT_DETECTION_DURING_RED_LIGHT;
                 }
             }
             break;
         case GREEN_LIGHT: // State is GREEN now
-            game.startScan();
+            //game.startScan();
             if (pressedButton == RED_PRESSED) {
                 comm.resetMsg();
                 handleGameState(RED);
-                comm.sendMessage(9, 9, game.getSensitivity(), game.getState(), IDLE);
+                //comm.sendMessage(9, 9, game.getSensitivity(), game.getState(), IDLE);
                 state = WAIT_FOR_MOVEMENT_DETECTION_DURING_RED_LIGHT;
             }
             for (int i = 0; i < NUM_PLAYERS; i++) {
-                if (game.isPlayerInRange(players[i].getId(),NUM_PLAYERS) && players[i].getStatus() == PLAYING) {
-                    comm.sendMessage(9, players[i].getId(), game.getSensitivity(), GREEN, CROSSED_FINISH_LINE);
-                    Serial.println("Player " + String(players[i].getId()) + " crossed finish line");
-                    players[i].setStatus(CROSSED_FINISH_LINE);
-                }
+                // if (game.isPlayerInRange(players[i].getId(),NUM_PLAYERS) && players[i].getStatus() == PLAYING) {
+                //     comm.sendMessage(9, players[i].getId(), game.getSensitivity(), GREEN, CROSSED_FINISH_LINE);
+                //     Serial.println("Player " + String(players[i].getId()) + " crossed finish line");
+                //     players[i].setStatus(CROSSED_FINISH_LINE);
+                // }
             }
             break;
         case WAIT_FOR_MOVEMENT_DETECTION_DURING_RED_LIGHT: // State is RED now
             message = comm.getMsg();
             if (pressedButton == GREEN_PRESSED) {
                 handleGameState(GREEN);
-                comm.sendMessage(9, 9, game.getSensitivity(), game.getState(), IDLE);
                 previousMillisGreenDelay = millis();
                 state = GREEN_LIGHT_DELAY;
             }
@@ -190,14 +205,8 @@ void sendMessageToAllPlayers(GameState state) {
     static int currentPlayerIndex = 0;
     static unsigned long sendPlayerMillis = millis();
 
-    #define SEND_INTERVAL 2000
+    #define SEND_INTERVAL 100
     #define PLAYER_SEND_INTERVAL (SEND_INTERVAL / NUM_PLAYERS)
-    #define GENERAL_SEND_INTERVAL 200
-
-    if (millis() - previousMillisGeneral > GENERAL_SEND_INTERVAL) {
-        comm.sendMessage(9, 9, game.getSensitivity(), state, IDLE);
-        previousMillisGeneral = millis();
-    }
 
     if (millis() - sendPlayerMillis > PLAYER_SEND_INTERVAL) {
         comm.sendMessage(9, players[currentPlayerIndex].getId(), game.getSensitivity(), state, players[currentPlayerIndex].getStatus());
@@ -241,7 +250,7 @@ void uiUpdate() {
     static unsigned long lastButtonPressMillis = 0;
     static unsigned long firstPressMillis = 0;
     static BUTTON_PRESSED lastPressedButton = NO_BUTTON_PRESSED;
-    const unsigned long buttonCooldown = 400;
+    const unsigned long buttonCooldown = 200;
     const unsigned long doublePressWindow = 5000; // 5 seconds
 
     pressedButton = ui.buttonPressed();
@@ -295,7 +304,7 @@ void uiUpdate() {
 
 void resetValues(int resetType) {
     game.setGameMode(INDIVIDUAL_MANUAL);
-    game.resetValues();
+    //game.resetValues();
 
     if (resetType == PRE_GAME) {
         game.setState(PRE_GAME);
@@ -322,6 +331,29 @@ void resetValues(int resetType) {
 
 unsigned long getRandomTime(unsigned long minTime, unsigned long maxTime) {
     return random(minTime, maxTime);
+}
+
+const char* getStateName(int state) {
+    switch (state) {
+        case 0: return "CHECK_COMMUNICATION";
+        case 1: return "START";
+        case 2: return "GREEN_LIGHT";
+        case 3: return "WAIT_FOR_MOVEMENT_DETECTION_DURING_RED_LIGHT";
+        case 4: return "GREEN_LIGHT_DELAY";
+        case 5: return "STATE_GAMEOVER";
+        default: return "UNKNOWN_STATE";
+    }
+}
+
+const char* getGameStateName(GameState gameState) {
+    switch (gameState) {
+        case PRE_GAME: return "PRE_GAME";
+        case GAME_BEGIN: return "GAME_BEGIN";
+        case RED: return "RED";
+        case GREEN: return "GREEN";
+        case GAME_OVER: return "GAME_OVER";
+        default: return "UNKNOWN_GAME_STATE";
+    }
 }
 
 void loopAnalysis()

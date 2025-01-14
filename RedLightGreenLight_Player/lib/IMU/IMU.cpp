@@ -19,16 +19,6 @@ void IMU::readSensorData(float* ax, float* ay, float* az, float* gx, float* gy, 
     inv_imu_sensor_event_t imu_event;
     _imu.getDataFromRegisters(imu_event);
 
-    // Print raw sensor data
-    // Serial.print("AccelX: "); Serial.print(imu_event.accel[0]); Serial.print(", ");
-    // Serial.print("AccelY: "); Serial.print(imu_event.accel[1]); Serial.print(", ");
-    // Serial.print("AccelZ: "); Serial.print(imu_event.accel[2]); Serial.print(", ");
-    // Serial.print("GyroX: "); Serial.print(imu_event.gyro[0]); Serial.print(", ");
-    // Serial.print("GyroY: "); Serial.print(imu_event.gyro[1]); Serial.print(", ");
-    // Serial.print("GyroZ: "); Serial.print(imu_event.gyro[2]); Serial.print(", ");
-    // Serial.print("Temperature: "); Serial.println(imu_event.temperature);
-
-    // Assign values to provided pointers
     *ax = imu_event.accel[0];
     *ay = imu_event.accel[1];
     *az = imu_event.accel[2];
@@ -38,8 +28,8 @@ void IMU::readSensorData(float* ax, float* ay, float* az, float* gx, float* gy, 
 }
 
 bool IMU::isMovementDetected(int userThreshold) {
-    int threshold = 15000;//4000 almost every movement, 10000 medium, 15000 almost impossible to reach
-
+    //4000 almost every movement, 10000 medium, 15000 almost impossible to reach
+    int threshold = map(userThreshold, 10, 1, 4000, 15000);
     // Track time using millis()
     static unsigned long lastSampleTime = 0;
     unsigned long currentTime = millis();
@@ -51,8 +41,6 @@ bool IMU::isMovementDetected(int userThreshold) {
 
         // Calculate the absolute sum of sensor values
         int absoluteSum = abs(ax) + abs(ay) + abs(az) + abs(gx) + abs(gy) + abs(gz);
-
-        //Serial.print("Absolute sum: "); Serial.println(absoluteSum);
 
         lastSampleTime = currentTime;
 

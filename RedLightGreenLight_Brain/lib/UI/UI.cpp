@@ -51,6 +51,7 @@ BUTTON_PRESSED UI::buttonPressed() {
         if (buttonState == LOW) {
             BUTTON_PRESSED button = static_cast<BUTTON_PRESSED>(currentChannel);
             currentChannel = (currentChannel + 1) % 15;  // Move to the next channel for the next cycle
+            Serial.println("Button pressed: " + String(button));
             return button;
         }
 
