@@ -30,8 +30,8 @@ void UI::setupPinsAndSensors() {
     pinMode(SEL3, OUTPUT);
     pinMode(IO_IN, INPUT_PULLUP);
 
-    Serial2.begin(9600, SERIAL_8N1, 34, 12);
-    setVolume(30);
+    Serial2.begin(9600, SERIAL_8N1, 34, 19);
+    setVolume(15);
 
 }
 
@@ -51,7 +51,7 @@ BUTTON_PRESSED UI::buttonPressed() {
         if (buttonState == LOW) {
             BUTTON_PRESSED button = static_cast<BUTTON_PRESSED>(currentChannel);
             currentChannel = (currentChannel + 1) % 15;  // Move to the next channel for the next cycle
-            Serial.println("Button pressed: " + String(button));
+            //Serial.println("Button pressed: " + String(button));
             return button;
         }
 
@@ -158,6 +158,8 @@ void UI::updateLEDs(GameState gameState, GameMode gameMode, Player players[], in
 }
 
 void UI::playSound(SOUND_TYPE soundType) {
+    Serial.println("Playing file number: " + String(soundType));
+
     switch (soundType) {
         case RED_LIGHT_SOUND:
             executeCMD(0x0F, 0x01, 0x01);
@@ -214,7 +216,7 @@ bool UI::isBusy() {
 void UI::setVolume(int volume) {
     executeCMD(0x06, 0, volume);
     delay(100);
-    //Serial.println("Volume set to: " + String(volume));
+    Serial.println("Volume set to: " + String(volume));
 }
 
 void UI::printSensitivity(int sensitivity) {

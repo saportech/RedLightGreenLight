@@ -1,20 +1,12 @@
 #include "Player.h"
 #define DEBUG
 
-// const char* predefinedMacs[] = {
-//         "AC:15:18:4B:46:58",//Speaker
-//         "AC:15:18:4B:46:00",//written 2 on it
-//         "AC:15:18:4B:45:E4",//written 3 on it
-//         "AC:15:18:4B:45:F0",//written 4 on it
-//         "AC:15:18:4B:46:50",
-//     };
-
 const char* predefinedMacs[] = {
-    "88:13:BF:60:BD:A0",//With speaker
-    "88:13:BF:60:9F:88",//With battery only
-    "AC:15:18:4B:45:E4",
-    "AC:15:18:4B:45:F0",
-    "AC:15:18:4B:46:50",
+    "88:13:BF:60:BD:A0",//1
+    "88:13:BF:60:9F:88",//2
+    "88:13:BF:60:91:20",//3
+    "88:13:BF:5C:C4:20",//4
+    "88:13:BF:5C:C4:94",//5
 };
 
 const int predefinedIds[] = {

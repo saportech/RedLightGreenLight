@@ -34,6 +34,8 @@ public:
     const char* gameStateToString(GameState state);
     const char* playerStatusToString(PlayerStatus status);
 
+    bool checkBrainNearby() const;
+
 private:
     void parseMessage(const uint8_t *data, int len);
     void printMessageDetails(const Msg& message);
@@ -42,6 +44,7 @@ private:
 
     Msg message;
     int playerId;
+    static bool isBrainNearby;
 
     enum class ComState {
         WaitingForEstablishMessage,

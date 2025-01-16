@@ -43,20 +43,39 @@ void UI::updateReactions(int gameState, int playerStatus) {
 void UI::updateLEDs(int gameState, int playerStatus) {
     static unsigned long lastUpdateMillis = millis();
 
-    CRGB gameColor = (gameState == GREEN) ? CRGB::Green : (gameState == GAME_BEGIN) ? CRGB::Green : (gameState == RED) ? CRGB::Red : (gameState == PRE_GAME) ? CRGB::Yellow : (gameState == GAME_OVER) ? CRGB::Pink : CRGB::Orange;
-    CRGB statusColor = (playerStatus == PLAYING) ? CRGB::Blue : (playerStatus == NOT_PLAYING) ? CRGB::Red : (playerStatus == MOVED) ? CRGB::Yellow : (playerStatus == ESTABLISHED_COMMUNICATION) ? CRGB::Purple : CRGB::Orange;
+    // Define colors based on game state and player status
+    CRGB gameColor = (gameState == GREEN) ? CRGB::Green : 
+                     (gameState == GAME_BEGIN) ? CRGB::Green : 
+                     (gameState == RED) ? CRGB::Red : 
+                     (gameState == PRE_GAME) ? CRGB::Yellow : 
+                     (gameState == GAME_OVER) ? CRGB::Pink : 
+                     CRGB::Orange;
 
-    leds[0] = gameColor;
-    leds[0].nscale8(ledBrightness);
-    
-    leds[5] = statusColor;
-    leds[5].nscale8(ledBrightness);
-    
+    CRGB statusColor = (playerStatus == PLAYING) ? CRGB::Blue : 
+                       (playerStatus == NOT_PLAYING) ? CRGB::Red : 
+                       (playerStatus == MOVED) ? CRGB::Yellow : 
+                       (playerStatus == ESTABLISHED_COMMUNICATION) ? CRGB::Purple : 
+                       CRGB::Orange;
+
+    // Update LEDs 0 and 1 with game color
+    for (int i = 0; i <= 1; i++) {
+        leds[i] = gameColor;
+        leds[i].nscale8(ledBrightness);
+    }
+
+    // Update LEDs 2 to 5 with status color
+    for (int i = 2; i <= 5; i++) {
+        leds[i] = statusColor;
+        leds[i].nscale8(ledBrightness);
+    }
+
+    // Show updates if the time has elapsed
     if (millis() - lastUpdateMillis > 50) {
         lastUpdateMillis = millis();
         FastLED.show();
     }
 }
+
 
 void UI::setupAudio() {
 
@@ -71,7 +90,7 @@ void UI::setupAudio() {
   Serial.println("SD card initialized.");
 
   audio.setPinout(I2S_BCLK, I2S_LRC, I2S_DOUT);
-  audio.setVolume(21);
+  audio.setVolume(15);
 
 }
 
@@ -81,7 +100,7 @@ void UI::playSound(SOUND sound) {
         switch (sound) {
             case MOVED_SOUND:
                 Serial.println("Playing moved sound");
-                if (!audio.connecttoFS(SD, "/001.mp3")) {
+                if (!audio.connecttoFS(SD, "/001.wav")) {
                     Serial.println("Failed to open audio file");
                 } else {
                     Serial.println("Playing audio file: 001.mp3");
@@ -89,11 +108,11 @@ void UI::playSound(SOUND sound) {
                 break;
             case READY_SOUND:
                 Serial.println("Playing ready sound");
-                audio.connecttoFS(SD, "/002.mp3");
+                audio.connecttoFS(SD, "/002.wav");
                 break;
             case MISSION_ACCOMPLISHED_SOUND:
                 Serial.println("Playing mission accomplished sound");
-                audio.connecttoFS(SD, "/003.mp3");
+                audio.connecttoFS(SD, "/003.wav");
                 break;
             default:
                 Serial.println("Error in playSound()");

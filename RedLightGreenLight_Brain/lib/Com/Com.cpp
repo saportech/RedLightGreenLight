@@ -6,11 +6,11 @@ bool Com::messageReceived = false;
 Com::Msg Com::incomingMessage = {};
 
 const char* Com::predefinedMacs[5] = {  // Definition in one source file
-    "88:13:bf:60:bd:a0",
-    "88:13:bf:60:9f:88",
-    "ac:15:18:4b:45:e6",
-    "ac:15:18:4b:45:f2",
-    "ac:15:18:4b:46:52",
+    "88:13:bf:60:bd:a0",//1
+    "88:13:bf:60:9f:88",//2
+    "88:13:bf:60:91:20",//3
+    "88:13:bf:5c:c4:20",//4
+    "88:13:bf:5c:c4:94",//5
 };
 
 Com::Com() {}
@@ -79,7 +79,6 @@ void Com::addPlayersAsPeers() {
     }
 }
 
-
 void Com::sendMessage(int id_sender, int id_receiver, int sensitivity, GameState game_state, PlayerStatus player_status) {
     Msg msg = {id_sender, id_receiver, sensitivity, game_state, player_status};
     uint8_t data[sizeof(Msg)];
@@ -91,7 +90,7 @@ void Com::sendMessage(int id_sender, int id_receiver, int sensitivity, GameState
     if (result == ESP_OK) {
         #ifdef DEBUG
         //Serial.println("Broadcast message sent successfully:");
-        printMessageDetails(msg);
+        //printMessageDetails(msg);
         #endif
     } else {
         Serial.println("Error broadcasting the message");

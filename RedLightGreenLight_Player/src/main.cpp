@@ -15,14 +15,12 @@ int playerId;
 
 void playerStateMachine();
 void handleGamePlayerState(GameState newGameState, PlayerStatus newPlayerStatus, int newSensitivity);
-void scanBrain();
 void loopAnalysis();
 
 void setup() {
     Serial.begin(115200);
     #ifdef DEBUG
         Serial.println("Red Light Green Light Player Unit");
-        delay(3000);
     #endif
 
     ui.setup();
@@ -53,7 +51,7 @@ void playerStateMachine() {
         GREEN_LIGHT,
         WAIT_BEFORE_RED_LIGHT,
         CHECK_IF_MOVED_DURING_RED_LIGHT,
-        MOVED_DURING_RED_LIGHT,
+        NOTIFY_BRAIN_OF_GAME_OVER,
         STATE_CELEBRATE_VICTORY_OR_LOSS,
         STATE_GAMEOVER
     };
@@ -75,7 +73,7 @@ void playerStateMachine() {
             case GREEN_LIGHT: Serial.print("GREEN_LIGHT"); break;
             case WAIT_BEFORE_RED_LIGHT: Serial.print("WAIT_BEFORE_RED_LIGHT"); break;
             case CHECK_IF_MOVED_DURING_RED_LIGHT: Serial.print("CHECK_IF_MOVED_DURING_RED_LIGHT"); break;
-            case MOVED_DURING_RED_LIGHT: Serial.print("MOVED_DURING_RED_LIGHT"); break;
+            case NOTIFY_BRAIN_OF_GAME_OVER: Serial.print("NOTIFY_BRAIN_OF_GAME_OVER"); break;
             case STATE_CELEBRATE_VICTORY_OR_LOSS: Serial.print("STATE_CELEBRATE_VICTORY_OR_LOSS"); break;
             case STATE_GAMEOVER: Serial.print("STATE_GAMEOVER"); break;
             default: Serial.print("UNKNOWN_STATE"); break;
@@ -112,7 +110,16 @@ void playerStateMachine() {
                 break;
             }
             if (game.getState() == GAME_BEGIN) {
-                if (message.game_state == RED) {
+                if (comm.checkBrainNearby() && player.getStatus() == PLAYING) {
+                    Serial.println("Player " + String(playerId) + " crossed the finish line");
+                    ui.playSound(MISSION_ACCOMPLISHED_SOUND);
+                    handleGamePlayerState(GREEN, CROSSED_FINISH_LINE, message.sensitivity);
+                    comm.sendMessage(playerId, 9, game.getSensitivity(), game.getState(), player.getStatus());
+                    ui.resetVibrateFlag();
+                    previousMillis = millis();
+                    state = NOTIFY_BRAIN_OF_GAME_OVER;
+                }
+                else if (message.game_state == RED) {
                     handleGamePlayerState(RED, player.getStatus(), message.sensitivity);
                     previousMillis = millis();
                     state = WAIT_BEFORE_RED_LIGHT;
@@ -124,12 +131,14 @@ void playerStateMachine() {
                 handleGamePlayerState(RED, player.getStatus(), message.sensitivity);
                 previousMillis = millis();
                 state = WAIT_BEFORE_RED_LIGHT;
-            } else if (message.player_status == CROSSED_FINISH_LINE) {
+            } else if (comm.checkBrainNearby() && player.getStatus() == PLAYING) {
+                Serial.println("Player " + String(playerId) + " crossed the finish line");
                 ui.playSound(MISSION_ACCOMPLISHED_SOUND);
                 handleGamePlayerState(GREEN, CROSSED_FINISH_LINE, message.sensitivity);
+                comm.sendMessage(playerId, 9, game.getSensitivity(), game.getState(), player.getStatus());
                 ui.resetVibrateFlag();
                 previousMillis = millis();
-                state = STATE_CELEBRATE_VICTORY_OR_LOSS;
+                state = NOTIFY_BRAIN_OF_GAME_OVER;
             }
             break;
         case WAIT_BEFORE_RED_LIGHT://State is before RED
@@ -146,19 +155,19 @@ void playerStateMachine() {
                 Serial.println("Player " + String(playerId) + " moved during red light");
                 previousMillis = millis();
                 previousSendMillis = millis();
-                state = MOVED_DURING_RED_LIGHT;
+                state = NOTIFY_BRAIN_OF_GAME_OVER;
             }
             if (message.game_state == GREEN) {
                 handleGamePlayerState(GREEN, player.getStatus(), message.sensitivity);
                 state = GREEN_LIGHT;
             }
             break;
-        case MOVED_DURING_RED_LIGHT:
-            if (millis() - previousSendMillis > 3000) {
+        case NOTIFY_BRAIN_OF_GAME_OVER:
+            if (millis() - previousSendMillis > 500) {
                 comm.sendMessage(playerId, 9, game.getSensitivity(), game.getState(), player.getStatus());
                 previousSendMillis = millis();
             }
-            if (message.id_receiver == playerId && message.player_status == NOT_PLAYING) {
+            if (message.id_receiver == playerId && (message.player_status == NOT_PLAYING || message.player_status == CROSSED_FINISH_LINE)) {
                 Serial.println("Player " + String(playerId) + " got the ACK from the brain");
                 previousSendMillis = millis();
                 state = STATE_CELEBRATE_VICTORY_OR_LOSS;

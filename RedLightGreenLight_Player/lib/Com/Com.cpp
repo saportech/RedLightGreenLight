@@ -1,8 +1,9 @@
 #include "Com.h"
 
-//#define DEBUG 1
+#define DEBUG 1
 
 bool Com::messageReceived = false;
+bool Com::isBrainNearby = false;
 Com::Msg Com::incomingMessage = {};
 
 Com::Com() {}
@@ -57,58 +58,23 @@ void Com::promiscuousCallback(void* buf, wifi_promiscuous_pkt_type_t type) {
         // Compare the source MAC with the target MAC
         if (memcmp(srcMac, targetMac, 6) == 0) {
             int rssi = ppkt->rx_ctrl.rssi; // Get the RSSI
-            Serial.print("RSSI from target MAC: ");
-            Serial.println(rssi); // Print the RSSI value
+
+            // Update isBrainNearby based on RSSI range
+            if (rssi > -20 && rssi < 0) {
+                isBrainNearby = true;
+            } else {
+                isBrainNearby = false;
+            }
+
+            // Debug print
+            // Serial.print("RSSI from target MAC: ");
+            // Serial.println(rssi);
         }
     }
 }
 
-void Com::reinit(int id) {
-    playerId = id;
-    resetMsg();
-
-    WiFi.mode(WIFI_STA);
-    if (esp_now_init() != ESP_OK) {
-        Serial.println("Error initializing ESP-NOW");
-        return;
-    }
-
-    #ifdef DEBUG
-    Serial.print("Device MAC Address: ");
-    Serial.println(WiFi.macAddress());
-    #endif
-
-    esp_now_register_recv_cb(onDataReceive);
-    esp_now_register_send_cb(onDataSent);
-
-    esp_now_peer_info_t peerInfo = {};
-    memcpy(peerInfo.peer_addr, brainMac, 6);
-    peerInfo.channel = 0;
-    peerInfo.encrypt = false;
-
-    if (!esp_now_is_peer_exist(brainMac)) {
-        if (esp_now_add_peer(&peerInfo) != ESP_OK) {
-            Serial.println("Failed to add brain as a peer");
-        } else {
-            Serial.println("Brain added as peer");
-        }
-
-    }
-}
-
-void Com::deinitEspNow() {
-    Serial.println("Deinitializing ESP-NOW...");
-
-    // Deinitialize ESP-NOW
-    if (esp_now_deinit() != ESP_OK) {
-        Serial.println("ESP-NOW deinitialization failed!");
-    } else {
-        Serial.println("ESP-NOW deinitialized successfully.");
-    }
-
-    // Turn off Wi-Fi to release resources
-    WiFi.mode(WIFI_OFF);
-    delay(100); // Allow some time for the hardware to reset
+bool Com::checkBrainNearby() const {
+    return isBrainNearby;
 }
 
 void Com::receiveData() {

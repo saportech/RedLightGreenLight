@@ -12,10 +12,9 @@
 #define I2S_DOUT 33
 #define I2S_BCLK 26
 #define I2S_LRC 25
-#define SD_CS 5
 
 Audio audio;
-IMU imu;
+//IMU imu;
 
 void setupAudio();
 void runAudio();
@@ -25,23 +24,21 @@ void setup() {
   while(!Serial) {}
 
   Serial.println("Starting setup...");
-  delay(3000);
 
-  imu.begin();
-
-  //setupAudio();
+  setupAudio();
 }
 
 void loop() {
 
-    // audio.loop();
-    // runAudio();
+    audio.loop();
+
+    runAudio();
 
 }
 
 void runAudio() {
   if (!audio.isRunning()) {
-    if (!audio.connecttoFS(SD, "/001.mp3")) {
+    if (!audio.connecttoFS(SD, "/003.wav")) {
       Serial.println("Failed to open audio file");
     } else {
       Serial.println("Playing audio file: 001.mp3");
@@ -64,7 +61,7 @@ void setupAudio() {
   audio.setPinout(I2S_BCLK, I2S_LRC, I2S_DOUT);
   audio.setVolume(21);
 
-  if (!audio.connecttoFS(SD, "/001.mp3")) {
+  if (!audio.connecttoFS(SD, "/002.wav")) {
     Serial.println("Failed to open audio file");
     while (true);
   }

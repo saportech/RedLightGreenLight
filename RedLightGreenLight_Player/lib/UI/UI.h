@@ -44,9 +44,9 @@ private:
     void setupAudio();
     CRGB leds[NUM_LEDS];
     Audio audio;
-    int vibrationMotorPin1 = 12;
-    int vibrationMotorPin2 = 14;
-    uint8_t ledBrightness = 30;
+    int vibrationMotorPin1 = 14;
+    int vibrationMotorPin2 = 12;
+    uint8_t ledBrightness = 10;
     bool motorActivated = false;
 };
 

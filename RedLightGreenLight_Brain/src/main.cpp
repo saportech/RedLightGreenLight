@@ -5,7 +5,7 @@
 #include "Player.h"
 #include "UI.h"
 
-#define NUM_PLAYERS 2
+#define NUM_PLAYERS 5
 std::vector<int> playerIDs(NUM_PLAYERS);
 
 Com comm;
@@ -47,14 +47,6 @@ void setup() {
     comm.begin();
 
     resetValues(PRE_GAME);
-
-    BLEDevice::init("ESP32_Brain");
-    BLEServer *pServer = BLEDevice::createServer();
-    BLEAdvertising *pAdvertising = BLEDevice::getAdvertising();
-    pAdvertising->setScanResponse(true);
-    BLEAdvertisementData advData;
-    advData.setName("ESP32_Brain"); // Device name
-    pAdvertising->start();
 }
 
 void loop() {
@@ -62,8 +54,6 @@ void loop() {
     uiUpdate();
 
     brainStateMachine();
-
-    //loopAnalysis();
     
 }
 
@@ -157,20 +147,19 @@ void brainStateMachine() {
             }
             break;
         case GREEN_LIGHT: // State is GREEN now
-            //game.startScan();
+            message = comm.getMsg();
             if (pressedButton == RED_PRESSED) {
                 comm.resetMsg();
                 handleGameState(RED);
-                //comm.sendMessage(9, 9, game.getSensitivity(), game.getState(), IDLE);
                 state = WAIT_FOR_MOVEMENT_DETECTION_DURING_RED_LIGHT;
             }
             for (int i = 0; i < NUM_PLAYERS; i++) {
-                // if (game.isPlayerInRange(players[i].getId(),NUM_PLAYERS) && players[i].getStatus() == PLAYING) {
-                //     comm.sendMessage(9, players[i].getId(), game.getSensitivity(), GREEN, CROSSED_FINISH_LINE);
-                //     Serial.println("Player " + String(players[i].getId()) + " crossed finish line");
-                //     players[i].setStatus(CROSSED_FINISH_LINE);
-                // }
+                if (message.id_sender == players[i].getId() && message.player_status == CROSSED_FINISH_LINE && players[i].getStatus() == PLAYING) {
+                    Serial.println("Player " + String(players[i].getId()) + " crossed finish line");
+                    players[i].setStatus(CROSSED_FINISH_LINE);
+                }
             }
+            comm.resetMsg();
             break;
         case WAIT_FOR_MOVEMENT_DETECTION_DURING_RED_LIGHT: // State is RED now
             message = comm.getMsg();
