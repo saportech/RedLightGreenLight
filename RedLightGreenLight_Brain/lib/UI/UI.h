@@ -92,7 +92,7 @@ enum SOUND_TYPE {
     ALL_PLAYERS_READY_SOUND
 };
 
-#define BRIGHTNESS_SCALE 10
+#define BRIGHTNESS_SCALE 255
 
 class UI {
 public:

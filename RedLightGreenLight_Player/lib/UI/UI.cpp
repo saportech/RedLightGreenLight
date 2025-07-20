@@ -76,7 +76,6 @@ void UI::updateLEDs(int gameState, int playerStatus) {
     }
 }
 
-
 void UI::setupAudio() {
 
   pinMode(SD_CS, OUTPUT);
@@ -90,7 +89,7 @@ void UI::setupAudio() {
   Serial.println("SD card initialized.");
 
   audio.setPinout(I2S_BCLK, I2S_LRC, I2S_DOUT);
-  audio.setVolume(15);
+  audio.setVolume(30);
 
 }
 

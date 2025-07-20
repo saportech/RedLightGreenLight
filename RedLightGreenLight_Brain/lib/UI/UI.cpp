@@ -31,7 +31,7 @@ void UI::setupPinsAndSensors() {
     pinMode(IO_IN, INPUT_PULLUP);
 
     Serial2.begin(9600, SERIAL_8N1, 34, 19);
-    setVolume(15);
+    setVolume(22);
 
 }
 

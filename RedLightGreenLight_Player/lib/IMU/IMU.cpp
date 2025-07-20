@@ -5,7 +5,7 @@ bool IMU::begin() {
     if (ret != 0) {
         Serial.print("ICM42670 initialization failed: ");
         Serial.println(ret);
-        while (1);
+        ESP.restart();
     } else {
         Serial.println("ICM42670 initialization successful.");
     }

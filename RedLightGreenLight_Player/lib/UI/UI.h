@@ -46,7 +46,7 @@ private:
     Audio audio;
     int vibrationMotorPin1 = 14;
     int vibrationMotorPin2 = 12;
-    uint8_t ledBrightness = 10;
+    uint8_t ledBrightness = 255;
     bool motorActivated = false;
 };
 
